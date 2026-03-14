@@ -217,7 +217,18 @@ Update this table every time a new AI-generated file is created or a file is sub
 
 | File Path | Tool | Date | Prompt Summary | Reviewed By | Notes |
 |---|---|---|---|---|---|
-| *(none yet — no code written as of PRD stage)* | — | — | — | — | — |
+| `packages/types/src/index.ts` | Claude (claude-sonnet-4-6) | 2026-03-14 | Shared TypeScript interfaces and enums for all domain models | unreviewed | |
+| `apps/api/prisma/schema.prisma` | Claude (claude-sonnet-4-6) | 2026-03-14 | Prisma schema — all six models, H3 indexes, enums | unreviewed | |
+| `apps/api/src/config.ts` | Claude (claude-sonnet-4-6) | 2026-03-14 | Env var loading and validation at startup | unreviewed | |
+| `apps/api/src/plugins/prisma.ts` | Claude (claude-sonnet-4-6) | 2026-03-14 | Fastify Prisma client plugin | unreviewed | |
+| `apps/api/src/plugins/redis.ts` | Claude (claude-sonnet-4-6) | 2026-03-14 | Fastify Redis client plugin | unreviewed | |
+| `apps/api/src/lib/h3.ts` | Claude (claude-sonnet-4-6) | 2026-03-14 | H3 index helpers — getH3Indexes, getGridDistance, constants | unreviewed | |
+| `apps/api/src/lib/ranking.ts` | Claude (claude-sonnet-4-6) | 2026-03-14 | Event ranking engine — tag overlap + H3 distance penalty | unreviewed | |
+| `apps/api/src/routes/health.ts` | Claude (claude-sonnet-4-6) | 2026-03-14 | GET /health endpoint | unreviewed | |
+| `apps/api/src/routes/events.ts` | Claude (claude-sonnet-4-6) | 2026-03-14 | POST /events and GET /events endpoints | unreviewed | |
+| `apps/api/src/index.ts` | Claude (claude-sonnet-4-6) | 2026-03-14 | Fastify server entry point, plugin wiring, graceful shutdown | unreviewed | |
+| `apps/web/src/app/layout.tsx` | Claude (claude-sonnet-4-6) | 2026-03-14 | Next.js root layout | unreviewed | |
+| `apps/web/src/app/page.tsx` | Claude (claude-sonnet-4-6) | 2026-03-14 | Feed page placeholder | unreviewed | |
 
 ---
 
