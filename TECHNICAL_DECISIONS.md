@@ -1,6 +1,6 @@
 # CityPulse — Technical Decisions
 
-**Version:** 1.1
+**Version:** 1.2
 **Status:** Active
 **Date:** March 2026
 **Purpose:** Records architectural and technology decisions that shape how this product is built. Every entry explains what was chosen, why, and what rules follow from that choice.
@@ -19,6 +19,8 @@ This document is the authoritative record of decisions that are not obvious from
 | TD-004 | Primary Database | PostgreSQL with Prisma ORM | Confirmed |
 | TD-005 | Caching Layer | Redis | Confirmed |
 | TD-006 | Media / Object Storage | MinIO or Garage (S3-compatible, self-hosted) | Decision pending — one to be selected |
+| TD-007 | Frontend Framework | Next.js | Confirmed |
+| TD-008 | Backend Runtime | Node.js | Confirmed |
 
 ---
 
@@ -433,5 +435,127 @@ The following will determine the final choice:
 
 ---
 
-*CityPulse Technical Decisions v1.1 — March 2026 — Confidential*
+---
+
+## TD-007 — Frontend Framework: Next.js
+
+**Date:** March 2026
+**Status:** Confirmed
+**Applies to:** All user-facing web application screens
+
+### What Was Decided
+
+The CityPulse web application is built with **Next.js**. Next.js is a React-based framework maintained by Vercel that provides routing, server-side rendering, static generation, and API route capabilities in a single project.
+
+### Why Next.js
+
+- **Server-side rendering (SSR) and static generation (SSG)** — event pages and the feed can be rendered on the server, improving initial load performance and making content indexable by search engines without additional infrastructure.
+- **App Router** — Next.js's App Router provides a file-system-based routing model that maps cleanly onto the screen structure defined in the UI requirements (feed, map, event detail, submission, profile, search).
+- **API Routes** — Next.js supports lightweight API endpoints within the same project. These are used for the web client's own data-fetching needs. The primary business logic and data layer is handled by the separate Node.js backend (TD-008).
+- **Built-in image optimisation** — the `<Image>` component handles responsive images, lazy loading, and format conversion automatically. Relevant once event images are in scope.
+- **TypeScript first** — Next.js has first-class TypeScript support, consistent with the requirement to use TypeScript across the stack.
+- **Deployment via Coolify** — Next.js applications deploy as Docker containers and are fully compatible with Coolify's build and deployment pipeline.
+
+### Architecture Boundary
+
+Next.js is the **frontend layer only.** It is responsible for:
+
+- Rendering all UI screens
+- Client-side routing and navigation
+- Fetching data from the Node.js backend API
+- Managing client-side state (feed filters, map interactions, form state)
+
+Next.js is **not** responsible for:
+
+- Business logic (event ranking, AI classification, user profiling)
+- Direct database access
+- Background jobs
+- Authentication token issuance
+
+All business logic lives in the Node.js backend (TD-008). The Next.js application communicates with it over HTTP.
+
+### Rules
+
+**R1 — The App Router is used. The Pages Router is not.** All routing uses the `app/` directory convention. No new routes are created under `pages/`.
+
+**R2 — Next.js API routes are thin proxies only.** If a Next.js API route is used, it forwards the request to the Node.js backend and returns the response. No business logic, database queries, or AI operations run inside Next.js API routes.
+
+**R3 — No direct database access from Next.js.** The Prisma client is not imported anywhere in the Next.js project. All data access goes through the Node.js backend API.
+
+**R4 — TypeScript is used throughout.** All Next.js files use `.ts` or `.tsx` extensions. Plain `.js` files are not added to the project.
+
+**R5 — UI component library selection is deferred.** No UI component library has been chosen. Components are built custom until a library decision is made and documented in this file. Do not introduce a component library as a dependency without a TD entry.
+
+**R6 — Environment variables that must be accessible in the browser are prefixed `NEXT_PUBLIC_`.** All other environment variables (API keys, backend URLs) are server-side only and never prefixed `NEXT_PUBLIC_`.
+
+### Open Questions
+
+| Question | Impact |
+|---|---|
+| Will the Next.js app and the Node.js backend live in a monorepo or separate repositories? | Affects project structure, shared type definitions, and deployment pipeline |
+| What is the Next.js version to be used at project scaffold time? | Pin on scaffold; document here |
+| How are shared TypeScript types (e.g. Event, UserProfile) shared between Next.js and the Node.js backend? | Monorepo package, or duplicated types, or generated from the Prisma schema |
+
+---
+
+## TD-008 — Backend Runtime: Node.js
+
+**Date:** March 2026
+**Status:** Confirmed
+**Applies to:** All backend services — API, AI processing pipeline, job workers
+
+### What Was Decided
+
+The CityPulse backend is written in **Node.js**. Node.js is the runtime for the primary API server, the AI classification worker, and any background job processors.
+
+### Why Node.js
+
+- **Consistent language across the stack** — both the Next.js frontend (TD-007) and the Node.js backend are TypeScript. This allows types, validation schemas, and utility functions to be shared across the stack without a translation layer.
+- **Prisma compatibility** — Prisma's primary runtime is Node.js. Running Prisma in the same environment as the API server is the standard supported configuration.
+- **H3 library support** — `h3-js`, the official Uber H3 JavaScript library, runs natively in Node.js.
+- **Redis client ecosystem** — mature, well-maintained Redis clients (e.g. `ioredis`) are available for Node.js.
+- **BullMQ / job queue** — BullMQ, the leading Redis-backed job queue library, is a Node.js package. It is the candidate library for the AI classification queue (TD-005).
+- **Non-blocking I/O** — Node.js's event loop is well-suited to the API's workload profile: many concurrent requests that are primarily I/O-bound (database reads, Redis lookups, external AI API calls).
+
+### What the Node.js Backend Owns
+
+| Responsibility | Description |
+|---|---|
+| REST API | All data endpoints consumed by the Next.js frontend and future mobile clients |
+| Authentication | Token issuance, validation, and session management |
+| Event ranking engine | Tag overlap scoring, distance penalty via H3 ring distance, feed assembly |
+| AI classification dispatch | Receives submitted events, pushes classification jobs to the Redis queue |
+| AI classification worker | Pulls jobs from the queue, calls the AI model, writes tags back to PostgreSQL |
+| User profile updates | Processes behavioral signals (clicks, skips, Interested) and updates the user's tag profile |
+| Rate limiting | Enforces submission rate limits via Redis counters |
+| Media upload handling | Pre-signed URL generation for object storage uploads (TD-006) |
+
+### Rules
+
+**R1 — TypeScript is used throughout. Plain JavaScript files are not added to the backend project.** The TypeScript compiler is configured in strict mode.
+
+**R2 — The backend exposes a REST API.** All endpoints follow consistent REST conventions. GraphQL and RPC-style endpoints are not introduced without a new TD entry.
+
+**R3 — The Prisma client is instantiated once at startup and shared across the application.** It is not instantiated per-request or per-module.
+
+**R4 — All AI classification work runs asynchronously via the job queue.** The HTTP request that accepts an event submission returns immediately after writing the event to the database. The AI classification job is enqueued separately. No synchronous AI API calls block the HTTP response path.
+
+**R5 — The backend is stateless with respect to in-flight requests.** All state is stored in PostgreSQL or Redis. The Node.js process holds no in-memory application state that would be lost on a restart.
+
+**R6 — A web framework will be selected and documented before implementation begins.** The Node.js HTTP framework (e.g. Fastify, Express, Hono) is not yet chosen. It must be added as a TD entry before the backend scaffold is created. This decision is intentionally deferred — do not assume a framework.
+
+**R7 — All external API calls (AI model provider, geocoding, etc.) are made from the Node.js backend only.** The Next.js frontend never calls third-party APIs directly with secrets. Secrets live on the backend.
+
+### Open Questions
+
+| Question | Impact |
+|---|---|
+| Which HTTP framework? (Fastify, Express, Hono, or other) | Affects routing conventions, middleware model, and performance characteristics |
+| Monorepo or separate repository from Next.js? | Affects how shared types are managed and how deployments are coordinated |
+| Which AI model provider for the event classifier and chat? | Affects the AI integration layer in the worker |
+| Single Node.js process or separate processes for API and worker? | Single process is simpler to start; separate processes allow independent scaling |
+
+---
+
+*CityPulse Technical Decisions v1.2 — March 2026 — Confidential*
 *This document must be updated whenever a covered decision is revised or a new architectural decision is made.*
