@@ -1,6 +1,6 @@
 # CityPulse — Technical Decisions
 
-**Version:** 1.2
+**Version:** 1.3
 **Status:** Active
 **Date:** March 2026
 **Purpose:** Records architectural and technology decisions that shape how this product is built. Every entry explains what was chosen, why, and what rules follow from that choice.
@@ -19,8 +19,11 @@ This document is the authoritative record of decisions that are not obvious from
 | TD-004 | Primary Database | PostgreSQL with Prisma ORM | Confirmed |
 | TD-005 | Caching Layer | Redis | Confirmed |
 | TD-006 | Media / Object Storage | MinIO or Garage (S3-compatible, self-hosted) | Decision pending — one to be selected |
-| TD-007 | Frontend Framework | Next.js | Confirmed |
-| TD-008 | Backend Runtime | Node.js | Confirmed |
+| TD-007 | Frontend Framework | Next.js 15 | Confirmed |
+| TD-008 | Backend Runtime | Node.js + Fastify | Confirmed |
+| TD-009 | Monorepo Structure | pnpm workspaces — apps/web, apps/api, packages/types | Confirmed |
+| TD-010 | AI Provider | Anthropic Claude API | Confirmed |
+| TD-011 | Launch Market | Kingston, Jamaica — Hetzner Ashburn (US East) | Confirmed |
 
 ---
 
@@ -557,5 +560,106 @@ The CityPulse backend is written in **Node.js**. Node.js is the runtime for the 
 
 ---
 
-*CityPulse Technical Decisions v1.2 — March 2026 — Confidential*
+---
+
+## TD-009 — Monorepo Structure: pnpm Workspaces
+
+**Date:** March 2026
+**Status:** Confirmed
+**Applies to:** Entire codebase structure and local development workflow
+
+### What Was Decided
+
+The CityPulse codebase is a **pnpm workspace monorepo**. All applications and shared packages live in a single Git repository. pnpm manages dependencies across workspaces with a single lockfile.
+
+### Repository Layout
+
+```
+citypulse/
+├── apps/
+│   ├── web/          # Next.js 15 frontend
+│   └── api/          # Node.js + Fastify backend
+├── packages/
+│   └── types/        # Shared TypeScript type definitions
+├── pnpm-workspace.yaml
+├── package.json      # Root — dev tooling only, no app dependencies
+├── tsconfig.base.json
+└── .env.example
+```
+
+### Why pnpm Workspaces
+
+- Single lockfile across all packages — no dependency version drift between frontend and backend
+- Shared types in `packages/types` are imported directly by both `apps/web` and `apps/api` without publishing to npm
+- pnpm's symlink approach is faster and more disk-efficient than npm or yarn workspaces
+- Native workspace protocol (`workspace:*`) keeps internal package references explicit
+
+### Rules
+
+**R1 — `packages/types` is the only place shared TypeScript types are defined.** Neither `apps/web` nor `apps/api` defines types that the other imports directly. If a type is needed in both, it goes in `packages/types`.
+
+**R2 — Root `package.json` contains dev tooling only.** TypeScript, ESLint, Prettier, and similar tools are installed at the root. Application dependencies (`fastify`, `next`, `prisma`, etc.) are installed inside their respective `apps/` package.
+
+**R3 — Each app is independently runnable.** `apps/api` must start without `apps/web` running, and vice versa. There is no hard runtime coupling between the two apps.
+
+**R4 — A single `.env.example` at the root documents all environment variables across all apps.** Each app reads only the variables it needs. The naming convention prefixes variables with the app name where ambiguous (e.g. `API_PORT`, `WEB_PORT`).
+
+---
+
+## TD-010 — AI Provider: Anthropic Claude API
+
+**Date:** March 2026
+**Status:** Confirmed
+**Applies to:** Event classifier, conversational AI chat (P1), any future AI features
+
+### What Was Decided
+
+All AI model calls in CityPulse are made to the **Anthropic Claude API**. Claude is used for both the event classification pipeline (MVP) and the conversational chat interface (v1.1).
+
+### What Claude Is Used For
+
+| Feature | PRD Priority | Usage |
+|---|---|---|
+| Event classifier | P0 (MVP) | Receives event title + description, returns category, tags, and spam signal |
+| AI chat | P1 | Conversational discovery interface with access to user profile and event database |
+
+### Rules
+
+**R1 — All Anthropic API calls are made from the Node.js backend only.** The API key never touches the frontend. It is stored as an environment variable on the backend and never logged.
+
+**R2 — The AI classifier runs asynchronously via the Redis job queue (TD-005).** It is never called synchronously in the HTTP request path.
+
+**R3 — All prompts are stored in version-controlled prompt files**, not hardcoded as inline strings in application code. Prompt changes are tracked in git like code changes.
+
+**R4 — Model version is pinned in configuration, not hardcoded at call sites.** When the model is upgraded, one configuration value changes, not every call site.
+
+---
+
+## TD-011 — Launch Market: Kingston, Jamaica
+
+**Date:** March 2026
+**Status:** Confirmed
+**Applies to:** Initial data seeding, server region selection, city configuration
+
+### What Was Decided
+
+**Kingston, Jamaica** is the launch city for CityPulse. All MVP development, seeding, and testing is oriented around Kingston.
+
+### Infrastructure Implication
+
+Hetzner **Ashburn, Virginia (US East)** is the selected data center region. It is the closest Hetzner location to Jamaica, minimising API and page load latency for Kingston users.
+
+### Implications for Development
+
+| Area | Implication |
+|---|---|
+| Seed data | Initial events seeded for the development database are based in Kingston |
+| H3 city boundary | The Kingston city boundary is the first H3 cell set defined in the City table |
+| Timezone | Jamaica Standard Time (UTC-5, no daylight saving). All event times stored as UTC, displayed as JST in the UI |
+| Default map center | Kingston coordinates (lat: 17.9970, lng: -76.7936) used as the default map center |
+| Currency / payments | Not in MVP scope, but Jamaica uses JMD — noted for future reference |
+
+---
+
+*CityPulse Technical Decisions v1.3 — March 2026 — Confidential*
 *This document must be updated whenever a covered decision is revised or a new architectural decision is made.*

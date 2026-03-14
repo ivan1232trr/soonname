@@ -1,0 +1,51 @@
+# AI-GENERATED
+# Tool: Claude (claude-sonnet-4-6)
+# Date: 2026-03-14
+# Prompt summary: gitignore covering Node, TypeScript, Next.js, Prisma, and env files
+# Reviewed by: unreviewed
+
+# --- Environment files ---
+# Never commit real secrets; .env.example is the safe template
+.env
+.env.local
+.env.*.local
+
+# --- Node dependencies ---
+# Installed packages are reproducible via pnpm install
+node_modules/
+
+# --- Build outputs ---
+# Compiled TypeScript output directories
+dist/
+build/
+.next/
+out/
+
+# --- TypeScript incremental build cache ---
+*.tsbuildinfo
+
+# --- Prisma generated client ---
+# Generated at migration time; not committed
+apps/api/src/generated/
+
+# --- pnpm ---
+# pnpm lockfile is committed; the virtual store is not
+.pnpm-store/
+
+# --- OS artifacts ---
+.DS_Store
+Thumbs.db
+
+# --- Editor directories ---
+.idea/
+*.swp
+*.swo
+
+# --- Logs ---
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# --- Test coverage ---
+coverage/
+.nyc_output/

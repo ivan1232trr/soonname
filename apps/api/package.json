@@ -1,0 +1,34 @@
+{
+  "name": "@citypulse/api",
+  "version": "0.0.1",
+  "description": "CityPulse Fastify API server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc --project tsconfig.json",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --project tsconfig.json --noEmit",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.20.0",
+    "@citypulse/types": "workspace:*",
+    "@fastify/cors": "^9.0.0",
+    "@prisma/client": "^5.12.0",
+    "fastify": "^4.27.0",
+    "fastify-plugin": "^4.5.0",
+    "pino-pretty": "^11.0.0",
+    "h3-js": "^4.1.0",
+    "ioredis": "^5.3.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.0",
+    "prisma": "^5.12.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0"
+  }
+}

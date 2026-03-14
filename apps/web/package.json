@@ -1,0 +1,25 @@
+{
+  "name": "@citypulse/web",
+  "version": "0.0.1",
+  "description": "CityPulse Next.js 15 web application",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --project tsconfig.json --noEmit",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@citypulse/types": "workspace:*",
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.4.0"
+  }
+}

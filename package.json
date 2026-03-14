@@ -1,0 +1,20 @@
+{
+  "name": "citypulse",
+  "version": "0.0.1",
+  "description": "CityPulse monorepo root — tooling and workspace coordination only",
+  "private": true,
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "dev:api": "pnpm --filter @citypulse/api dev",
+    "dev:web": "pnpm --filter @citypulse/web dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}

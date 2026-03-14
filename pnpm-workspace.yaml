@@ -1,0 +1,12 @@
+# AI-GENERATED
+# Tool: Claude (claude-sonnet-4-6)
+# Date: 2026-03-14
+# Prompt summary: pnpm workspace configuration declaring all app and package directories
+# Reviewed by: unreviewed
+
+# Declare the workspace packages so pnpm resolves cross-package dependencies locally
+packages:
+  # Include every app under the apps directory as a workspace member
+  - "apps/*"
+  # Include every shared package under packages as a workspace member
+  - "packages/*"
