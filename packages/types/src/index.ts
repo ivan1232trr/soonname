@@ -1,7 +1,7 @@
 // AI-GENERATED
 // Tool: Claude (claude-sonnet-4-6)
 // Date: 2026-03-14
-// Prompt summary: shared TypeScript interfaces and enums matching the Prisma schema for CityPulse
+// Prompt summary: shared TypeScript interfaces and enums matching the Prisma schema for CityPulse — added Vibe, TimeSlot, updated UserProfile
 // Reviewed by: unreviewed
 
 // ── Enums ──────────────────────────────────────────────────────────────────────
@@ -44,6 +44,56 @@ export enum EventStatus {
   ACTIVE = "ACTIVE",
   // Removed from feed pending manual review due to reports or policy violation
   FLAGGED = "FLAGGED",
+}
+
+/**
+ * Enumerates the types of interactions a user can have with an event.
+ * Stored as a string enum so values are human-readable in the database.
+ */
+// Mirrors the UserInteractionType enum in prisma/schema.prisma
+export enum UserInteractionType {
+  // User opened the event detail screen; lightweight engagement signal
+  VIEW = "VIEW",
+  // User tapped "Interested" / saved to their list
+  SAVE = "SAVE",
+  // User reported the event for review
+  FLAG = "FLAG",
+  // User shared the event externally
+  SHARE = "SHARE",
+}
+
+/**
+ * Social energy preference captured during onboarding.
+ * Biases the AI ranking toward matching event sizes and atmospheres.
+ *
+ * @remarks Values must stay in sync with the Vibe enum in prisma/schema.prisma.
+ */
+// Mirror of the Prisma Vibe enum; used in onboarding and profile screens
+export enum Vibe {
+  // Low-key hangouts, small gatherings, quiet spots
+  CHILL = "CHILL",
+  // Parties, big events, meeting new people
+  SOCIAL = "SOCIAL",
+  // No strong preference; the user is open to either
+  BOTH = "BOTH",
+}
+
+/**
+ * Time-of-day preference captured during onboarding.
+ * Stored as an array so users can select multiple windows.
+ *
+ * @remarks Values must stay in sync with the TimeSlot enum in prisma/schema.prisma.
+ */
+// Mirror of the Prisma TimeSlot enum; used in onboarding Step 3
+export enum TimeSlot {
+  // 6am – 12pm morning events
+  MORNING = "MORNING",
+  // 12pm – 5pm afternoon events
+  AFTERNOON = "AFTERNOON",
+  // 5pm – 10pm evening events
+  EVENING = "EVENING",
+  // 10pm and later late-night events
+  LATE_NIGHT = "LATE_NIGHT",
 }
 
 // ── Core entity interfaces ─────────────────────────────────────────────────────
@@ -120,6 +170,8 @@ export interface IUser {
  * @param userId            - Foreign key referencing IUser.id
  * @param preferredCityId   - FK referencing ICity.id; the city shown on first open
  * @param interestedTags    - Tags the user has explicitly expressed interest in
+ * @param vibe              - Social energy preference from onboarding Step 2
+ * @param timePreferences   - Time-of-day preferences from onboarding Step 3
  * @param updatedAt         - ISO timestamp of the most recent profile change
  */
 export interface IUserProfile {
@@ -131,6 +183,10 @@ export interface IUserProfile {
   preferredCityId: string;
   // Ordered list of tag slugs reflecting the user's stated interests
   interestedTags: string[];
+  // Social energy preference selected during onboarding; defaults to BOTH
+  vibe: Vibe;
+  // Time-of-day windows the user is typically active; multi-select from onboarding
+  timePreferences: TimeSlot[];
   // When the profile preferences were last saved
   updatedAt: Date;
 }
@@ -148,7 +204,7 @@ export interface IUserProfile {
  * @param h3R7                 - H3 cell index at resolution 7 (~5 km² city district)
  * @param h3R9                 - H3 cell index at resolution 9 (~0.1 km² neighbourhood)
  * @param h3R11                - H3 cell index at resolution 11 (~0.001 km² venue level)
- * @param category             - Thematic category assigned by AI classifier
+ * @param category             - Thematic category assigned by AI classifier; null until classified
  * @param tags                 - Array of associated ITag objects
  * @param eventDate            - Calendar date the event occurs (ISO date string)
  * @param startTime            - Local start time as an ISO datetime string
@@ -178,8 +234,8 @@ export interface IEvent {
   h3R9: string;
   // H3 cell at resolution 11 — venue-level granularity for precise co-location
   h3R11: string;
-  // AI-assigned thematic category used for feed filtering
-  category: EventCategory;
+  // AI-assigned thematic category; null while PENDING_CLASSIFICATION, set before ACTIVE
+  category: EventCategory | null;
   // Tags attached to this event for fine-grained matching
   tags: ITag[];
   // ISO date string for the day the event takes place
@@ -223,27 +279,12 @@ export interface IUserInteraction {
   createdAt: Date;
 }
 
-/**
- * Enumerates the types of interactions a user can have with an event.
- * Stored as a string enum so values are human-readable in the database.
- */
-// Mirrors the UserInteractionType enum in prisma/schema.prisma
-export enum UserInteractionType {
-  // User opened the event detail screen; lightweight engagement signal
-  VIEW = "VIEW",
-  // User tapped "Interested" / saved to their list
-  SAVE = "SAVE",
-  // User reported the event for review
-  FLAG = "FLAG",
-  // User shared the event externally
-  SHARE = "SHARE",
-}
-
 // ── API I/O shapes ─────────────────────────────────────────────────────────────
 
 /**
  * Request body accepted by POST /events.
  * The API derives h3R7/r9/r11 from latitude and longitude — callers do not supply them.
+ * submittedById is derived from the authenticated session — callers do not supply it.
  *
  * @param title         - Short event title (required)
  * @param description   - Full description (required)
@@ -254,7 +295,6 @@ export enum UserInteractionType {
  * @param startTime     - ISO datetime string for start (required)
  * @param endTime       - ISO datetime string for end (optional)
  * @param cityId        - UUID of the city this event belongs to (required)
- * @param submittedById - UUID of the submitting user (required)
  */
 export interface CreateEventInput {
   // Short human-readable event title; shown as the card headline
@@ -275,8 +315,6 @@ export interface CreateEventInput {
   endTime?: string;
   // Which city the event belongs to; used to scope feed queries
   cityId: string;
-  // UUID of the user submitting the event; for attribution and moderation
-  submittedById: string;
 }
 
 /**
@@ -297,4 +335,47 @@ export interface GetEventsQuery {
   lat?: number;
   // User's current longitude; when provided alongside lat, enables H3 proximity ranking
   lng?: number;
+}
+
+/**
+ * Request body for POST /auth/register.
+ *
+ * @param email    - Email address for the new account
+ * @param password - Plaintext password; hashed server-side before storage
+ * @param name     - Display name shown publicly on event submissions
+ */
+export interface RegisterInput {
+  // Email used for login; must be unique across all accounts
+  email: string;
+  // Plaintext password supplied by the user; never stored — only the hash is kept
+  password: string;
+  // Publicly visible display name
+  name: string;
+}
+
+/**
+ * Request body for POST /auth/login.
+ *
+ * @param email    - Registered email address
+ * @param password - Plaintext password to verify against the stored hash
+ */
+export interface LoginInput {
+  // Email identifying the account to authenticate
+  email: string;
+  // Plaintext password to verify against the stored hash
+  password: string;
+}
+
+/**
+ * Response body for POST /auth/login and POST /auth/register.
+ * Contains the JWT token and the authenticated user's public data.
+ *
+ * @param token - JWT bearer token to include in subsequent API requests
+ * @param user  - Public user record for the authenticated account
+ */
+export interface AuthResponse {
+  // JWT bearer token; include as "Authorization: Bearer <token>" in subsequent requests
+  token: string;
+  // Public user data so the client can populate the profile screen without a second request
+  user: IUser;
 }

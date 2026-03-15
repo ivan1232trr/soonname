@@ -78,6 +78,10 @@ export const config = {
   // Anthropic API key for AI classification; required to run the classifier pipeline
   anthropicApiKey: requireEnv("ANTHROPIC_API_KEY"),
 
+  // ── Auth ─────────────────────────────────────────────────────────────────
+  // Secret used to sign and verify JWT tokens; must be long and random in production
+  jwtSecret: requireEnv("JWT_SECRET"),
+
   // ── Runtime ──────────────────────────────────────────────────────────────
   // Current runtime environment; controls log verbosity and error detail in responses
   nodeEnv: optionalEnv("NODE_ENV", "development"),

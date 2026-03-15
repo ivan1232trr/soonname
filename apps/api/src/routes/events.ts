@@ -1,7 +1,7 @@
 // AI-GENERATED
 // Tool: Claude (claude-sonnet-4-6)
 // Date: 2026-03-14
-// Prompt summary: Fastify route plugin implementing GET /events and POST /events for the CityPulse feed
+// Prompt summary: Fastify route plugin implementing GET /events and POST /events — updated to use auth, nullable category, and BullMQ enqueue
 // Reviewed by: unreviewed
 
 // ── Imports ───────────────────────────────────────────────────────────────────
@@ -18,30 +18,31 @@ import { getH3Indexes } from "../lib/h3.js";
 import { latLngToCell } from "h3-js";
 // Ranking engine: sorts events by proximity or date depending on whether a location is supplied
 import { rankEvents } from "../lib/ranking.js";
-// Prisma enum for event status; used to filter only ACTIVE events in GET /events
-import { EventStatus } from "@prisma/client";
-// Prisma enum for event category; used to filter by category in GET /events
-import { EventCategory as PrismaEventCategory } from "@prisma/client";
+// Prisma enums for event status and category filtering
+import { EventStatus, EventCategory as PrismaEventCategory } from "@prisma/client";
+// Classifier queue: enqueue classification jobs after a new event is inserted
+import { classifierQueue } from "../lib/classifier-queue.js";
 
 // ── Validation schemas ────────────────────────────────────────────────────────
 
 /**
  * Zod schema for the POST /events request body.
- * All fields mirror the CreateEventInput interface in @citypulse/types.
+ * submittedById is no longer in the body — it is derived from the authenticated session.
+ * All other fields match the CreateEventInput interface in @citypulse/types.
  */
 // Validate incoming event submission payloads before touching the database
 const createEventBodySchema = z.object({
   // Title must be at least 3 characters to prevent empty or trivially short submissions
   title: z.string().min(3, "Title must be at least 3 characters"),
-  // Description must be at least 10 characters for minimal content quality
-  description: z.string().min(10, "Description must be at least 10 characters"),
+  // Description must be at least 20 characters per the UI requirements validation rules
+  description: z.string().min(20, "Description must be at least 20 characters"),
   // Venue or area name; any non-empty string is valid
   locationName: z.string().min(1, "Location name is required"),
   // Latitude must be within the valid WGS-84 range
   latitude: z.number().min(-90).max(90),
   // Longitude must be within the valid WGS-84 range
   longitude: z.number().min(-180).max(180),
-  // ISO date string "YYYY-MM-DD"; coerced to a Date for Prisma
+  // ISO date string "YYYY-MM-DD" or ISO datetime; coerced to a Date for Prisma
   eventDate: z.string().datetime({ offset: true }).or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)),
   // ISO datetime string for the local start time
   startTime: z.string().datetime({ offset: true }),
@@ -49,8 +50,6 @@ const createEventBodySchema = z.object({
   endTime: z.string().datetime({ offset: true }).optional(),
   // UUID of the city this event belongs to
   cityId: z.string().uuid("cityId must be a valid UUID"),
-  // UUID of the submitting user
-  submittedById: z.string().uuid("submittedById must be a valid UUID"),
 });
 
 /**
@@ -74,20 +73,23 @@ const getEventsQuerySchema = z.object({
 /**
  * Registers GET /events and POST /events on the provided Fastify instance.
  *
- * POST /events: validates the body, computes H3 indexes, saves with PENDING_CLASSIFICATION status.
- * GET /events: fetches ACTIVE events for a city, optionally filters by category,
- *              and ranks by H3 ring proximity when lat/lng are supplied.
+ * POST /events: requires auth, validates the body, computes H3 indexes, saves with
+ *               PENDING_CLASSIFICATION status, and enqueues an AI classification job.
+ * GET /events:  public route; fetches ACTIVE events for a city, optionally filters by category,
+ *               and ranks by H3 ring proximity when lat/lng are supplied.
  *
- * @param fastify - The Fastify server instance (must have prisma plugin registered)
+ * @param fastify - The Fastify server instance (must have prisma, redis, and auth plugins registered)
  * @returns       - A Promise that resolves once both routes are registered
- * @sideEffects   - POST /events writes to the PostgreSQL events table via Prisma
+ * @sideEffects   - POST /events writes to PostgreSQL and enqueues a BullMQ job
  */
 export async function eventRoutes(fastify: FastifyInstance): Promise<void> {
   // ── POST /events ──────────────────────────────────────────────────────────
 
   fastify.post(
     "/events",
-    // Route handler: validate body, compute H3, persist to database
+    // Require a valid JWT so the submitter is always a known authenticated user
+    { preHandler: [fastify.authenticate] },
+    // Route handler: validate body, compute H3, persist to database, enqueue classifier job
     async (request: FastifyRequest, reply: FastifyReply) => {
       // Parse and validate the incoming JSON body against the Zod schema
       const parseResult = createEventBodySchema.safeParse(request.body);
@@ -120,7 +122,7 @@ export async function eventRoutes(fastify: FastifyInstance): Promise<void> {
           data: {
             // Short display title saved as-is from the submission
             title: body.title,
-            // Full description; may be enriched by the classifier pipeline later
+            // Full description; will be sent to the Claude classifier for tag extraction
             description: body.description,
             // Venue name for display; not used for geocoding
             locationName: body.locationName,
@@ -134,9 +136,8 @@ export async function eventRoutes(fastify: FastifyInstance): Promise<void> {
             h3R9: r9,
             // H3 cell at resolution 11; venue-level precision for co-location
             h3R11: r11,
-            // Category is left unset; the AI classifier will fill it in asynchronously
-            // Until then, a default placeholder avoids a null constraint failure
-            category: PrismaEventCategory.ENTERTAINMENT,
+            // Category is null until the AI classifier processes the job; schema allows nullable
+            category: null,
             // Convert the date string to a Date object for Prisma's DateTime field
             eventDate: new Date(body.eventDate),
             // Convert start time string to Date
@@ -147,19 +148,28 @@ export async function eventRoutes(fastify: FastifyInstance): Promise<void> {
             status: EventStatus.PENDING_CLASSIFICATION,
             // Link to the city so feed queries can scope by cityId
             cityId: body.cityId,
-            // Link to the submitting user for attribution and moderation
-            submittedById: body.submittedById,
+            // Resolved from the authenticated JWT; the client does not supply this field
+            submittedById: request.user.userId,
           },
           // Include related tags and city so the response is self-contained
           include: {
-            // Return the tag objects so clients can display them immediately
+            // Return the tag objects (empty at creation time; populated after classification)
             tags: true,
             // Return the city so clients know the timezone for rendering times
             city: true,
           },
         });
 
-        // Return 201 Created with the full saved event record
+        // Enqueue the classification job so the AI worker can process it asynchronously
+        // The HTTP response returns immediately; classification happens in the background
+        await classifierQueue.add(
+          // Job name for BullMQ's queue dashboard and logging
+          "classify-event",
+          // Payload: just the eventId so the worker fetches the full record from Postgres
+          { eventId: event.id }
+        );
+
+        // Return 201 Created with the full saved event record (status: PENDING_CLASSIFICATION)
         return reply.status(201).send(event);
       } catch (error) {
         // Log the raw error for server-side debugging; do not expose internals to the client
@@ -174,6 +184,7 @@ export async function eventRoutes(fastify: FastifyInstance): Promise<void> {
 
   fastify.get(
     "/events",
+    // Public route: no authentication required to browse the event feed
     // Route handler: validate query params, fetch active events, rank, return
     async (request: FastifyRequest, reply: FastifyReply) => {
       // Parse and validate the query string against the Zod schema
