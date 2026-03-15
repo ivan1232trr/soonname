@@ -1,1 +1,78 @@
+name: Main CI/CD
 
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: main-cicd-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: true
+
+jobs:
+  validate:
+    name: Test and Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm --filter @citypulse/api prisma:generate
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Run type checks
+        run: pnpm typecheck
+
+      - name: Build workspace
+        run: pnpm build
+
+  deploy-staging:
+    name: Deploy to Coolify Staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: staging
+
+    steps:
+      - name: Trigger Coolify deployment
+        env:
+          COOLIFY_STAGING_DEPLOY_WEBHOOK: ${{ secrets.COOLIFY_STAGING_DEPLOY_WEBHOOK }}
+        run: |
+          if [ -z "$COOLIFY_STAGING_DEPLOY_WEBHOOK" ]; then
+            echo "Missing COOLIFY_STAGING_DEPLOY_WEBHOOK secret."
+            exit 1
+          fi
+
+          curl --fail --show-error --silent \
+            -X POST \
+            "$COOLIFY_STAGING_DEPLOY_WEBHOOK"

@@ -10,6 +10,7 @@
   "scripts": {
     "dev:api": "pnpm --filter @citypulse/api dev",
     "dev:web": "pnpm --filter @citypulse/web dev",
+    "test": "pnpm -r --if-present test",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint"
