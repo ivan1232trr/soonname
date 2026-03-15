@@ -17,6 +17,8 @@
   --cat-culture: #ec4899;
   --cat-sports: #fa541c;
   --cp-bottom-nav-offset: 108px;
+  --cp-shell-mobile-max-width: 402px;
+  --cp-shell-desktop-max-width: 1240px;
   --font-inter: 'Inter', system-ui, sans-serif;
   --font-space-grotesk: 'Space Grotesk', system-ui, sans-serif;
   --font-manrope: 'Manrope', system-ui, sans-serif;
@@ -81,7 +83,7 @@ select {
 
 .shell {
   width: 100%;
-  max-width: 402px;
+  max-width: var(--cp-shell-mobile-max-width);
   margin: 0 auto;
   height: 100svh;
   background: var(--cp-bg);
@@ -98,4 +100,10 @@ select {
   padding: 24px 24px calc(24px + var(--cp-bottom-nav-offset) + 80px); /* Extra padding for double footers */
   overflow-y: auto;
   flex: 1;
+}
+
+@media (min-width: 900px) {
+  .shell:has(.desktopWideLayout) {
+    max-width: var(--cp-shell-desktop-max-width);
+  }
 }

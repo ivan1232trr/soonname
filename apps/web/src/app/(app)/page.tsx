@@ -92,11 +92,11 @@ export default function FeedPage() {
   );
 
   return (
-    <>
+    <div className={`${styles.page} desktopWideLayout`}>
       <div className={styles.topBar}>
         <div>
           <p className={styles.eyebrow}>Live feed</p>
-          <span className={styles.wordmark}>CityPulse</span>
+          <span className={styles.wordmark}>Event GO</span>
         </div>
         <Link href="/search" className={styles.iconButton}>
           <IconSearch size={22} color="var(--cp-text-secondary)" />
@@ -169,6 +169,6 @@ export default function FeedPage() {
           <EventCard key={event.id} event={eventToCardData(event)} />
         ))}
       </div>
-    </>
+    </div>
   );
 }

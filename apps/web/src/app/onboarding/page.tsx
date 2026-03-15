@@ -18,7 +18,7 @@ export default function CitySelectionPage() {
   return (
     <div className="shell">
       <div className={styles.content}>
-        <p className={styles.brand}>CityPulse</p>
+        <p className={styles.brand}>Event GO</p>
 
         <div className={styles.spacer64} />
 

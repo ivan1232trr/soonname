@@ -115,7 +115,7 @@ export default function ProfilePage() {
         <div className={styles.lockIcon}>
           <IconLock size={48} color="var(--cp-text-muted)" />
         </div>
-        <h2 className={styles.emptyTitle}>Sign in to CityPulse</h2>
+        <h2 className={styles.emptyTitle}>Sign in to Event GO</h2>
         <p className={styles.emptyText}>
           Personalize your feed, save events, and see your activity here.
         </p>
@@ -206,7 +206,7 @@ export default function ProfilePage() {
           </button>
         </div>
 
-        <p className={styles.privacy}>CityPulse Data Privacy Policy</p>
+        <p className={styles.privacy}>Event GO Data Privacy Policy</p>
       </div>
     </>
   );

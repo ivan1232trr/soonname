@@ -1,7 +1,7 @@
 {
   "name": "@citypulse/api",
   "version": "0.0.1",
-  "description": "CityPulse Fastify API server",
+  "description": "Event GO Fastify API server",
   "private": true,
   "type": "module",
   "scripts": {

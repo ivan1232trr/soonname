@@ -233,7 +233,7 @@ export default function EventDetailPage() {
             </div>
 
             <p className={styles.postedBy}>
-              Posted by {event.submittedBy?.name ?? "CityPulse"} · indexed {formatRelativeDate(event.updatedAt)}
+              Posted by {event.submittedBy?.name ?? "Event GO"} · indexed {formatRelativeDate(event.updatedAt)}
             </p>
           </>
         ) : null}

@@ -137,117 +137,120 @@ export default function MapPage() {
   );
 
   return (
-    <>
-      <div className={styles.topBar}>
-        <div>
-          <p className={styles.eyebrow}>Spatial discovery</p>
-          <span className={styles.wordmark}>CityPulse Map</span>
-        </div>
-        <Link href="/search" className={styles.iconButton}>
-          <IconSearch size={22} color="var(--cp-text-secondary)" />
-        </Link>
-      </div>
-
-      <div className={styles.controls}>
-        <select
-          className={styles.citySelect}
-          value={selectedCityId}
-          onChange={(event) => setSelectedCityId(event.target.value)}
-        >
-          {cities.map((city) => (
-            <option key={city.id} value={city.id}>
-              {city.name}, {city.country}
-            </option>
-          ))}
-        </select>
-
-        <div className={styles.filterRow}>
-          {CATEGORY_FILTERS.map((filter) => {
-            const active = selectedCategory === filter.value;
-            return (
-              <button
-                key={filter.label}
-                className={`${styles.filterChip} ${active ? styles.filterActive : ""}`}
-                onClick={() => setSelectedCategory(filter.value)}
-              >
-                {filter.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className={styles.mapArea}>
-        <GoogleMap
-          markers={markers}
-          center={
-            selectedCity === null
-              ? undefined
-              : { latitude: selectedCity.latitude, longitude: selectedCity.longitude }
-          }
-          selectedMarkerId={selectedEvent?.id}
-          onMarkerSelect={setSelectedEventId}
-          onViewportChange={handleViewportChange}
-        />
-      </div>
-
-      <div className={styles.panel}>
-        <div className={styles.panelHeader}>
+    <div className={`${styles.page} desktopWideLayout`}>
+      <div className={styles.pageHeader}>
+        <div className={styles.topBar}>
           <div>
-            <p className={styles.panelTitle}>
-              {selectedCity === null ? "Loading city" : `${selectedCity.name} hotspots`}
-            </p>
-            <p className={styles.panelMeta}>
-              {loading ? "Refreshing map…" : `${events.length} active event${events.length === 1 ? "" : "s"}`}
-            </p>
+            <p className={styles.eyebrow}>Spatial discovery</p>
+            <span className={styles.wordmark}>Event GO Map</span>
           </div>
-          {selectedEvent !== null ? (
-            <span className={styles.categoryChip} style={{ background: getCategoryColor(selectedEvent.category) }}>
-              {getCategoryLabel(selectedEvent.category)}
-            </span>
-          ) : null}
+          <Link href="/search" className={styles.iconButton}>
+            <IconSearch size={22} color="var(--cp-text-secondary)" />
+          </Link>
         </div>
 
-        {error !== null ? <p className={styles.emptyState}>{error}</p> : null}
-        {error === null && !loading && selectedEvent === null ? (
-          <p className={styles.emptyState}>No active events are currently mapped for this filter.</p>
-        ) : null}
+        <div className={styles.controls}>
+          <select
+            className={styles.citySelect}
+            value={selectedCityId}
+            onChange={(event) => setSelectedCityId(event.target.value)}
+          >
+            {cities.map((city) => (
+              <option key={city.id} value={city.id}>
+                {city.name}, {city.country}
+              </option>
+            ))}
+          </select>
 
-        {selectedEvent !== null ? (
-          <div className={styles.previewCard}>
-            <div
-              className={styles.previewBar}
-              style={{ background: getCategoryColor(selectedEvent.category) }}
-            />
-            <div className={styles.previewBody}>
-              <p className={styles.previewTitle}>{selectedEvent.title}</p>
-              <p className={styles.previewMeta}>
-                {formatEventDateTime(selectedEvent.startTime, selectedEvent.city?.timezone)}
-              </p>
-              <p className={styles.previewLoc}>{selectedEvent.locationName}</p>
-            </div>
-            <Link href={`/event/${selectedEvent.id}`} className={styles.viewDetailsBtn}>
-              View Details
-            </Link>
+          <div className={styles.filterRow}>
+            {CATEGORY_FILTERS.map((filter) => {
+              const active = selectedCategory === filter.value;
+              return (
+                <button
+                  key={filter.label}
+                  className={`${styles.filterChip} ${active ? styles.filterActive : ""}`}
+                  onClick={() => setSelectedCategory(filter.value)}
+                >
+                  {filter.label}
+                </button>
+              );
+            })}
           </div>
-        ) : null}
-
-        <div className={styles.eventRail}>
-          {events.map((event) => (
-            <button
-              key={event.id}
-              className={`${styles.eventCard} ${selectedEvent?.id === event.id ? styles.eventCardActive : ""}`}
-              onClick={() => setSelectedEventId(event.id)}
-            >
-              <span className={styles.eventCardTitle}>{event.title}</span>
-              <span className={styles.eventCardMeta}>
-                {formatEventDateTime(event.startTime, event.city?.timezone)}
-              </span>
-            </button>
-          ))}
         </div>
       </div>
 
-    </>
+      <div className={styles.contentGrid}>
+        <div className={styles.mapArea}>
+          <GoogleMap
+            markers={markers}
+            center={
+              selectedCity === null
+                ? undefined
+                : { latitude: selectedCity.latitude, longitude: selectedCity.longitude }
+            }
+            selectedMarkerId={selectedEvent?.id}
+            onMarkerSelect={setSelectedEventId}
+            onViewportChange={handleViewportChange}
+          />
+        </div>
+
+        <div className={styles.panel}>
+          <div className={styles.panelHeader}>
+            <div>
+              <p className={styles.panelTitle}>
+                {selectedCity === null ? "Loading city" : `${selectedCity.name} hotspots`}
+              </p>
+              <p className={styles.panelMeta}>
+                {loading ? "Refreshing map…" : `${events.length} active event${events.length === 1 ? "" : "s"}`}
+              </p>
+            </div>
+            {selectedEvent !== null ? (
+              <span className={styles.categoryChip} style={{ background: getCategoryColor(selectedEvent.category) }}>
+                {getCategoryLabel(selectedEvent.category)}
+              </span>
+            ) : null}
+          </div>
+
+          {error !== null ? <p className={styles.emptyState}>{error}</p> : null}
+          {error === null && !loading && selectedEvent === null ? (
+            <p className={styles.emptyState}>No active events are currently mapped for this filter.</p>
+          ) : null}
+
+          {selectedEvent !== null ? (
+            <div className={styles.previewCard}>
+              <div
+                className={styles.previewBar}
+                style={{ background: getCategoryColor(selectedEvent.category) }}
+              />
+              <div className={styles.previewBody}>
+                <p className={styles.previewTitle}>{selectedEvent.title}</p>
+                <p className={styles.previewMeta}>
+                  {formatEventDateTime(selectedEvent.startTime, selectedEvent.city?.timezone)}
+                </p>
+                <p className={styles.previewLoc}>{selectedEvent.locationName}</p>
+              </div>
+              <Link href={`/event/${selectedEvent.id}`} className={styles.viewDetailsBtn}>
+                View Details
+              </Link>
+            </div>
+          ) : null}
+
+          <div className={styles.eventRail}>
+            {events.map((event) => (
+              <button
+                key={event.id}
+                className={`${styles.eventCard} ${selectedEvent?.id === event.id ? styles.eventCardActive : ""}`}
+                onClick={() => setSelectedEventId(event.id)}
+              >
+                <span className={styles.eventCardTitle}>{event.title}</span>
+                <span className={styles.eventCardMeta}>
+                  {formatEventDateTime(event.startTime, event.city?.timezone)}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

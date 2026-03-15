@@ -757,13 +757,13 @@ async function main(): Promise<void> {
   console.log("\nAnnouncements:");
   const ANNOUNCEMENTS = [
     {
-      title: "Welcome to CityPulse Kingston!",
+      title: "Welcome to Event GO Kingston!",
       content: "We've just launched our newest city dashboard for Kingston. Explore the latest events, nightlife, and culture across the city.",
       priority: 1,
     },
     {
       title: "Scheduled Maintenance",
-      content: "The CityPulse API will be undergoing brief maintenance tomorrow at 3:00 AM UTC. Expect minor service interruptions.",
+      content: "The Event GO API will be undergoing brief maintenance tomorrow at 3:00 AM UTC. Expect minor service interruptions.",
       priority: 2,
     },
     {

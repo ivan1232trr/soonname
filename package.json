@@ -1,7 +1,7 @@
 {
-  "name": "citypulse",
+  "name": "eventgo",
   "version": "0.0.1",
-  "description": "CityPulse monorepo root — tooling and workspace coordination only",
+  "description": "Event GO monorepo root — tooling and workspace coordination only",
   "private": true,
   "engines": {
     "node": ">=20.0.0",

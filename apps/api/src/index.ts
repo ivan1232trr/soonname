@@ -144,7 +144,7 @@ async function main(): Promise<void> {
     // listen() resolves with the address string once the server is bound
     const address = await server.listen({ port: config.port, host: config.host });
     // Log the bound address so developers know where to send requests
-    server.log.info(`CityPulse API listening at ${address}`);
+    server.log.info(`Event GO API listening at ${address}`);
   } catch (error) {
     // Log the startup error before exiting so operators know what failed
     server.log.error(error, "Server failed to start");

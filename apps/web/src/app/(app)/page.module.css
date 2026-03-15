@@ -1,3 +1,10 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
 .topBar {
   display: flex;
   align-items: center;
@@ -45,6 +52,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .heroLabel {
@@ -66,6 +74,7 @@
   background: var(--cp-surface);
   color: var(--cp-text-primary);
   padding: 0 14px;
+  width: min(100%, 320px);
 }
 
 .geoChip {
@@ -139,8 +148,8 @@
 }
 
 .feedList {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   padding: 0 24px calc(24px + var(--cp-bottom-nav-offset));
   overflow-y: auto;
@@ -154,4 +163,58 @@
   border-radius: 16px;
   color: var(--cp-text-secondary);
   background: rgba(24, 24, 27, 0.72);
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 900px) {
+  .topBar,
+  .heroCard,
+  .filterRow,
+  .sectionHeader,
+  .feedList {
+    padding-left: 32px;
+    padding-right: 32px;
+  }
+
+  .topBar {
+    padding-top: 24px;
+    padding-bottom: 16px;
+  }
+
+  .heroCard {
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+
+  .heroTop {
+    align-items: center;
+    gap: 16px;
+  }
+
+  .heroCopy {
+    max-width: 72ch;
+  }
+
+  .filterRow {
+    flex-wrap: wrap;
+    overflow: visible;
+    margin-bottom: 18px;
+  }
+
+  .sectionHeader {
+    padding-bottom: 14px;
+  }
+
+  .feedList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    align-content: start;
+    padding-bottom: calc(32px + var(--cp-bottom-nav-offset));
+  }
+}
+
+@media (min-width: 1180px) {
+  .feedList {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }

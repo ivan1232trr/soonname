@@ -27,7 +27,7 @@ export default function TimesPreferencePage() {
   return (
     <div className="shell">
       <div className={styles.content}>
-        <p className={styles.brand}>CityPulse</p>
+        <p className={styles.brand}>Event GO</p>
 
         <div className={styles.spacer32} />
 

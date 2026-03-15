@@ -1,7 +1,7 @@
 {
   "name": "@citypulse/types",
   "version": "0.0.1",
-  "description": "Shared TypeScript types for the CityPulse monorepo",
+  "description": "Shared TypeScript types for the Event GO monorepo",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
