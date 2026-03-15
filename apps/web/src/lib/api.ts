@@ -164,7 +164,7 @@ export const getMe = (token: string): Promise<ApiUser> =>
   });
 
 export const getMyProfile = (token: string): Promise<ApiUserProfile> =>
-  apiFetch<ApiUserProfile>("/users/me/profile", {
+  apiFetch<ApiUserProfile>("users/me/profile", {
     headers: getHeaders(token, false),
   });
 
@@ -179,7 +179,7 @@ export const createProfile = (
   token: string,
   input: CreateProfileInput
 ): Promise<ApiUserProfile> =>
-  apiFetch<ApiUserProfile>("/users/me/profile", {
+  apiFetch<ApiUserProfile>("users/me/profile", {
     method: "POST",
     headers: getHeaders(token),
     body: JSON.stringify(input),
