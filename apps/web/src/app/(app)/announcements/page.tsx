@@ -12,41 +12,33 @@ export default function AnnouncementsPage() {
   const [suggestion, setSuggestion] = useState<ApiEventSuggestion | null>(null);
   const [suggestionLoading, setSuggestionLoading] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [cardVisible, setCardVisible] = useState(false);
 
   useEffect(() => {
-    const loadAnnouncements = async () => {
+    void (async () => {
       try {
         const data = await getAnnouncements();
         setAnnouncements(data);
-      } catch (err) {
-        console.error("Failed to load announcements", err);
+      } catch {
+        // non-critical
       } finally {
         setLoading(false);
       }
-    };
+    })();
 
-    const loadSuggestion = async () => {
+    void (async () => {
       try {
         const data = await getSuggestedEvent();
         setSuggestion(data);
+        // let the bubble animate in first, then reveal the card
+        setTimeout(() => setCardVisible(true), 600);
       } catch {
-        // Silently fail — suggestion is non-critical
+        setSuggestionLoading(false);
       } finally {
         setSuggestionLoading(false);
       }
-    };
-
-    void loadAnnouncements();
-    void loadSuggestion();
+    })();
   }, []);
-
-  if (loading && suggestionLoading) {
-    return (
-      <div className={styles.empty}>
-        <p className={styles.emptyText}>Checking for updates...</p>
-      </div>
-    );
-  }
 
   return (
     <>
@@ -55,44 +47,62 @@ export default function AnnouncementsPage() {
       </div>
 
       <div className={styles.content}>
-        {/* AI event suggestion */}
-        <div className={styles.suggestSection}>
-          <p className={styles.suggestLabel}>✦ AI Pick</p>
+
+        {/* ── AI bubble + event card ─────────────────────────── */}
+        <div className={styles.aiSection}>
+
           {suggestionLoading ? (
-            <div className={styles.suggestSkeleton}>
-              <p className={styles.skeletonText}>Finding the best event for you…</p>
+            <div className={styles.bubbleWrap}>
+              <div className={styles.avatarDot} />
+              <div className={`${styles.bubble} ${styles.bubbleTyping}`}>
+                <span className={styles.dot} />
+                <span className={styles.dot} />
+                <span className={styles.dot} />
+              </div>
             </div>
           ) : suggestion !== null ? (
-            <Link href={`/event/${suggestion.event.id}`} className={styles.suggestCard}>
-              {suggestion.event.category !== null && (
-                <span
-                  className={styles.suggestCategoryBar}
-                  style={{ background: getCategoryColor(suggestion.event.category) }}
-                />
-              )}
-              <div className={styles.suggestBody}>
-                <div className={styles.suggestTop}>
+            <>
+              {/* chat bubble */}
+              <div className={styles.bubbleWrap}>
+                <div className={styles.avatarDot}>✦</div>
+                <div className={styles.bubble}>
+                  <p className={styles.bubbleText}>Here&apos;s an event you&apos;d like.</p>
+                </div>
+              </div>
+
+              {/* event card slides in after bubble */}
+              <Link
+                href={`/event/${suggestion.event.id}`}
+                className={`${styles.eventCard} ${cardVisible ? styles.eventCardVisible : ""}`}
+              >
+                {suggestion.event.category !== null && (
+                  <span
+                    className={styles.categoryBar}
+                    style={{ background: getCategoryColor(suggestion.event.category) }}
+                  />
+                )}
+                <div className={styles.cardBody}>
                   {suggestion.event.category !== null && (
                     <span
-                      className={styles.suggestChip}
-                      style={{ background: getCategoryColor(suggestion.event.category) + "22", color: getCategoryColor(suggestion.event.category) }}
+                      className={styles.categoryChip}
+                      style={{
+                        background: getCategoryColor(suggestion.event.category) + "22",
+                        color: getCategoryColor(suggestion.event.category),
+                      }}
                     >
                       {getCategoryLabel(suggestion.event.category)}
                     </span>
                   )}
+                  <p className={styles.eventTitle}>{suggestion.event.title}</p>
+                  <p className={styles.eventReason}>{suggestion.reason}</p>
+                  <p className={styles.eventLocation}>{suggestion.event.locationName}</p>
                 </div>
-                <p className={styles.suggestTitle}>{suggestion.event.title}</p>
-                <p className={styles.suggestReason}>{suggestion.reason}</p>
-                <p className={styles.suggestLocation}>{suggestion.event.locationName}</p>
-              </div>
-            </Link>
-          ) : (
-            <div className={styles.suggestSkeleton}>
-              <p className={styles.skeletonText}>No events available right now.</p>
-            </div>
-          )}
+              </Link>
+            </>
+          ) : null}
         </div>
 
+        {/* ── Announcements list ─────────────────────────────── */}
         {!loading && (
           announcements.length > 0 ? (
             <div className={styles.list}>
@@ -103,9 +113,7 @@ export default function AnnouncementsPage() {
                     {ann.priority > 0 && (
                       <span
                         className={styles.priorityBadge}
-                        style={{
-                          backgroundColor: ann.priority === 2 ? "#ef4444" : "#f59e0b"
-                        }}
+                        style={{ backgroundColor: ann.priority === 2 ? "#ef4444" : "#f59e0b" }}
                       >
                         {ann.priority === 2 ? "Urgent" : "Update"}
                       </span>
@@ -114,17 +122,15 @@ export default function AnnouncementsPage() {
                   <p className={styles.annContent}>{ann.content}</p>
                   <p className={styles.annDate}>
                     {new Date(ann.createdAt).toLocaleDateString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric"
+                      month: "short", day: "numeric", year: "numeric",
                     })}
                   </p>
                 </div>
               ))}
             </div>
           ) : (
-            <div className={styles.empty}>
-              <p className={styles.emptyText}>You're all caught up! No announcements yet.</p>
+            <div className={styles.emptyAnn}>
+              <p className={styles.emptyText}>You&apos;re all caught up!</p>
             </div>
           )
         )}

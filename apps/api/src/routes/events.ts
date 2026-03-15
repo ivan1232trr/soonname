@@ -163,7 +163,9 @@ Respond with only the JSON object. No explanation, no markdown, no code blocks.`
           return reply.status(500).send({ error: "AI returned no text content" });
         }
 
-        const parsed = JSON.parse(firstBlock.text.trim()) as { category: string; tags: string[] };
+        // Strip markdown code fences if present (e.g. ```json ... ```)
+        const rawText = firstBlock.text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+        const parsed = JSON.parse(rawText) as { category: string; tags: string[] };
         return reply.status(200).send(parsed);
       } catch (error) {
         fastify.log.error({ error }, "Failed to preview classification");

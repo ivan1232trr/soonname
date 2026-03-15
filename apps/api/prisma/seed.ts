@@ -682,72 +682,42 @@ async function main(): Promise<void> {
   console.log("\nUser Interactions:");
   let interactionCount = 0;
 
+  // Helper: create interaction only if that user+event+type combo doesn't exist yet
+  const createInteractionIfNew = async (userId: string, eventId: string, type: "VIEW" | "SAVE" | "SHARE" | "FLAG") => {
+    const exists = await prisma.userInteraction.findFirst({ where: { userId, eventId, type } });
+    if (exists !== null) return;
+    await prisma.userInteraction.create({ data: { userId, eventId, type } });
+    interactionCount++;
+  };
+
   // Demo user views several events
   const demoUserId = userRecords[0]!.id;
   for (let i = 0; i < Math.min(8, eventRecords.length); i++) {
-    await prisma.userInteraction.create({
-      data: {
-        userId: demoUserId,
-        eventId: eventRecords[i]!.id,
-        type: "VIEW",
-      },
-    });
-    interactionCount++;
+    await createInteractionIfNew(demoUserId, eventRecords[i]!.id, "VIEW");
   }
 
   // Demo user saves a few events
   for (const idx of [0, 3, 6]) {
     if (eventRecords[idx] !== undefined) {
-      await prisma.userInteraction.create({
-        data: {
-          userId: demoUserId,
-          eventId: eventRecords[idx]!.id,
-          type: "SAVE",
-        },
-      });
-      interactionCount++;
+      await createInteractionIfNew(demoUserId, eventRecords[idx]!.id, "SAVE");
     }
   }
 
   // Demo user shares one event
   if (eventRecords[0] !== undefined) {
-    await prisma.userInteraction.create({
-      data: {
-        userId: demoUserId,
-        eventId: eventRecords[0]!.id,
-        type: "SHARE",
-      },
-    });
-    interactionCount++;
+    await createInteractionIfNew(demoUserId, eventRecords[0]!.id, "SHARE");
   }
 
   // Other users view and save events
   for (let userIdx = 1; userIdx < userRecords.length; userIdx++) {
     const userId = userRecords[userIdx]!.id;
-    // Each user views 3-5 random events
     const viewCount = 3 + (userIdx % 3);
     for (let i = 0; i < viewCount && i < eventRecords.length; i++) {
       const eventIdx = (userIdx * 3 + i) % eventRecords.length;
-      await prisma.userInteraction.create({
-        data: {
-          userId,
-          eventId: eventRecords[eventIdx]!.id,
-          type: "VIEW",
-        },
-      });
-      interactionCount++;
+      await createInteractionIfNew(userId, eventRecords[eventIdx]!.id, "VIEW");
     }
-
-    // Each user saves 1-2 events
     if (eventRecords[userIdx] !== undefined) {
-      await prisma.userInteraction.create({
-        data: {
-          userId,
-          eventId: eventRecords[userIdx]!.id,
-          type: "SAVE",
-        },
-      });
-      interactionCount++;
+      await createInteractionIfNew(userId, eventRecords[userIdx]!.id, "SAVE");
     }
   }
 
@@ -774,9 +744,10 @@ async function main(): Promise<void> {
   ];
 
   for (const ann of ANNOUNCEMENTS) {
-    const upserted = await prisma.announcement.create({
-      data: ann,
-    });
+    const existing = await prisma.announcement.findFirst({ where: { title: ann.title } });
+    const upserted = existing !== null
+      ? await prisma.announcement.update({ where: { id: existing.id }, data: ann })
+      : await prisma.announcement.create({ data: ann });
     console.log(`  ${upserted.title} (${upserted.id})`);
   }
 
