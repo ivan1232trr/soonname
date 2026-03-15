@@ -76,6 +76,11 @@ export interface ApiInteraction {
   createdAt: string;
 }
 
+export interface ApiEventSuggestion {
+  event: ApiEvent;
+  reason: string;
+}
+
 export interface ApiAnnouncement {
   id: string;
   title: string;

@@ -11,6 +11,7 @@ import type {
   ApiAuthResponse,
   ApiCity,
   ApiEvent,
+  ApiEventSuggestion,
   ApiInteraction,
   ApiTag,
   ApiUser,
@@ -20,6 +21,9 @@ import type {
 
 export const getAnnouncements = (): Promise<ApiAnnouncement[]> =>
   apiFetch<ApiAnnouncement[]>("announcements");
+
+export const getSuggestedEvent = (): Promise<ApiEventSuggestion> =>
+  apiFetch<ApiEventSuggestion>("events/suggest");
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:3001/api/v1";
