@@ -1,0 +1,135 @@
+.header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 24px;
+  flex-shrink: 0;
+}
+
+.avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  background: var(--cp-surface);
+  border: 1px solid var(--cp-border);
+  flex-shrink: 0;
+}
+
+.username {
+  font-family: var(--font-manrope);
+  font-size: 15px;
+  color: var(--cp-text-secondary);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 24px 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: var(--cp-surface);
+  border: 1px solid var(--cp-border);
+  border-radius: 16px;
+}
+
+.cardTitle {
+  font-family: var(--font-manrope);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cp-text-secondary);
+}
+
+.tagRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tagPrimary {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: #aa00e2;
+  font-family: var(--font-manrope);
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.tagMuted {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--cp-surface-elevated);
+  font-family: var(--font-manrope);
+  font-size: 13px;
+  color: var(--cp-text-secondary);
+}
+
+.tagMore {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--cp-surface-elevated);
+  font-family: var(--font-manrope);
+  font-size: 13px;
+  color: var(--cp-text-tertiary);
+}
+
+.actionList {
+  background: var(--cp-surface);
+  border: 1px solid var(--cp-border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.actionItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-manrope);
+  font-size: 15px;
+  color: var(--cp-text-primary);
+}
+
+.actionLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.actionDivider {
+  height: 1px;
+  background: var(--cp-border);
+}
+
+.chevron {
+  color: var(--cp-text-tertiary);
+  font-size: 18px;
+}
+
+.privacy {
+  font-family: var(--font-manrope);
+  font-size: 13px;
+  color: var(--cp-text-tertiary);
+  padding-top: 4px;
+}

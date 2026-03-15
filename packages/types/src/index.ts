@@ -325,6 +325,7 @@ export interface CreateEventInput {
  * @param category  - Optional category filter; omit to return all categories
  * @param lat       - User's current latitude; enables proximity ranking when paired with lng
  * @param lng       - User's current longitude; enables proximity ranking when paired with lat
+ * @param q         - Optional full-text search query applied to title, description, location, and tags
  */
 export interface GetEventsQuery {
   // Which city to fetch events for; all queries are scoped to one city
@@ -335,6 +336,15 @@ export interface GetEventsQuery {
   lat?: number;
   // User's current longitude; when provided alongside lat, enables H3 proximity ranking
   lng?: number;
+  // Free-text search query for matching events within the selected city
+  q?: string;
+  // Viewport bounds for H3-based spatial filtering (only fetch events visible on screen)
+  north?: number;
+  south?: number;
+  east?: number;
+  west?: number;
+  // Google Maps zoom level; determines which H3 resolution to use for viewport filtering
+  zoom?: number;
 }
 
 /**

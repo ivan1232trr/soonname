@@ -9,7 +9,7 @@
 // Fastify plugin helper that prevents double-registration in the same scope
 import fp from "fastify-plugin";
 // ioredis client class; provides a Promise-based Redis interface
-import Redis from "ioredis";
+import { Redis } from "ioredis";
 // Fastify types for the plugin callback signature
 import type { FastifyInstance } from "fastify";
 // Validated environment config; provides the REDIS_URL without raw process.env access

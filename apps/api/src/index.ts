@@ -16,12 +16,26 @@ import cors from "@fastify/cors";
 import prismaPlugin from "./plugins/prisma.js";
 // Redis plugin: registers the Redis client on the Fastify instance
 import redisPlugin from "./plugins/redis.js";
+// Auth plugin: registers JWT verification and Redis-backed session checks
+import authPlugin from "./plugins/auth.js";
+// Auth routes: register/login/logout
+import { authRoutes } from "./routes/auth.js";
+// User/account routes
+import { userRoutes } from "./routes/users.js";
+// Public city catalogue routes
+import { cityRoutes } from "./routes/cities.js";
+// Public tag taxonomy routes
+import { tagRoutes } from "./routes/tags.js";
+// Interaction recording routes
+import { interactionRoutes } from "./routes/interactions.js";
 // Health route: GET /health liveness endpoint
 import { healthRoutes } from "./routes/health.js";
 // Events routes: GET /events and POST /events
 import { eventRoutes } from "./routes/events.js";
 // Validated config: port, host, and environment flags
 import { config } from "./config.js";
+// Classifier worker bootstraps the queue consumer inside the API process
+import { startClassifierWorker } from "./workers/classifier.js";
 
 // ── Server factory ────────────────────────────────────────────────────────────
 
@@ -34,6 +48,14 @@ import { config } from "./config.js";
  * @sideEffects - Connects to PostgreSQL (via prismaPlugin) and Redis (via redisPlugin)
  */
 async function buildServer() {
+  const allowedOrigins =
+    config.corsOrigin === "*"
+      ? true
+      : config.corsOrigin
+          .split(",")
+          .map((origin) => origin.trim())
+          .filter((origin) => origin !== "");
+
   // Create the Fastify instance with appropriate logger settings for the environment
   const fastify = Fastify({
     // Use pretty-printed logs in development for human readability; JSON in production for log aggregators
@@ -46,10 +68,10 @@ async function buildServer() {
 
   // Register CORS before any routes so preflight requests are handled globally
   await fastify.register(cors, {
-    // Allow requests from the local Next.js dev server; tighten this for production
-    origin: config.isDev ? "*" : ["https://citypulse.app"],
+    // Allow requests from the configured web origins; "*" is useful for local development
+    origin: allowedOrigins,
     // Permit the HTTP methods used by the event routes
-    methods: ["GET", "POST", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "OPTIONS"],
   });
 
   // Register the Prisma plugin; this opens the DB connection pool at startup
@@ -57,6 +79,8 @@ async function buildServer() {
 
   // Register the Redis plugin; this opens the Redis TCP connection at startup
   await fastify.register(redisPlugin);
+  // Register auth after Redis so protected routes can verify JWTs and session revocation
+  await fastify.register(authPlugin);
 
   // ── Routes ────────────────────────────────────────────────────────────────
 
@@ -64,7 +88,12 @@ async function buildServer() {
   await fastify.register(healthRoutes);
 
   // Register the /events endpoints; prefix with /api/v1 for versioning
+  await fastify.register(authRoutes, { prefix: "/api/v1" });
+  await fastify.register(userRoutes, { prefix: "/api/v1" });
+  await fastify.register(cityRoutes, { prefix: "/api/v1" });
+  await fastify.register(tagRoutes, { prefix: "/api/v1" });
   await fastify.register(eventRoutes, { prefix: "/api/v1" });
+  await fastify.register(interactionRoutes, { prefix: "/api/v1" });
 
   // Return the fully configured server so the caller can invoke listen()
   return fastify;
@@ -82,11 +111,20 @@ async function buildServer() {
 async function main(): Promise<void> {
   // Build the server instance with all plugins and routes registered
   const server = await buildServer();
+  // Start the in-process classification worker only when Anthropic credentials are available
+  const classifierWorker = config.hasAnthropicApiKey ? startClassifierWorker() : null;
+
+  if (classifierWorker === null) {
+    server.log.warn("ANTHROPIC_API_KEY not set; new events will skip AI classification");
+  }
 
   // Wire graceful shutdown: when Kubernetes or the terminal sends SIGTERM, close cleanly
   const shutdown = async (signal: string): Promise<void> => {
     // Log which signal triggered the shutdown for debugging deployment issues
     server.log.info(`Received ${signal}; shutting down gracefully`);
+    if (classifierWorker !== null) {
+      await classifierWorker.close();
+    }
     // Close the Fastify server: stops accepting new requests, drains in-flight ones
     await server.close();
     // Exit with 0 to signal a clean shutdown to the process manager

@@ -1,0 +1,108 @@
+.content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 48px 24px 40px;
+  background: var(--cp-bg);
+}
+
+.brand {
+  font-family: var(--font-inter);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: #ffffff;
+}
+
+.spacer32 { height: 32px; }
+.spacer24 { height: 24px; }
+.flex { flex: 1; }
+
+.dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--cp-surface-elevated);
+}
+
+.dotActive {
+  width: 8px;
+  height: 8px;
+  background: var(--cp-primary);
+}
+
+.heading {
+  font-family: var(--font-inter);
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #ffffff;
+  white-space: pre-line;
+  margin-bottom: 8px;
+}
+
+.subheading {
+  font-family: var(--font-inter);
+  font-size: 15px;
+  color: var(--cp-text-secondary);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.timeCard {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  height: 100px;
+  padding: 20px;
+  background: var(--cp-surface);
+  border: 1px solid var(--cp-border);
+  border-radius: 16px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.cardSelected {
+  border-color: var(--cp-primary);
+  border-width: 2px;
+}
+
+.cardLabel {
+  font-family: var(--font-inter);
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.cardSub {
+  font-family: var(--font-inter);
+  font-size: 11px;
+  color: var(--cp-text-tertiary);
+}
+
+.continueBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 52px;
+  width: 100%;
+  background: var(--cp-primary);
+  border: none;
+  border-radius: 12px;
+  font-family: var(--font-inter);
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+}

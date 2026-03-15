@@ -36,7 +36,7 @@ export interface ClassifierJobData {
  * client decorated onto the Fastify instance.
  */
 // Instantiate once at module load; the Queue holds its own Redis connection internally
-export const classifierQueue = new Queue<ClassifierJobData>("citypulse:classifier", {
+export const classifierQueue = new Queue<ClassifierJobData>("citypulse-classifier", {
   // BullMQ connection config: pass the Redis URL directly so it manages its own pool
   connection: {
     // Use the same Redis instance as the rest of the application

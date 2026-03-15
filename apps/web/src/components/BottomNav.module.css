@@ -1,0 +1,59 @@
+.nav {
+  padding: 0 16px 16px;
+  background: var(--cp-bg);
+  flex-shrink: 0;
+}
+
+.pill {
+  display: flex;
+  align-items: center;
+  background: var(--cp-surface);
+  border: 1px solid var(--cp-border);
+  border-radius: 36px;
+  padding: 4px;
+  height: 62px;
+}
+
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex: 1;
+  height: 100%;
+  border-radius: 26px;
+  text-decoration: none;
+}
+
+.activeTab {
+  background: #aa00e2;
+}
+
+.label {
+  font-family: var(--font-manrope);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  color: var(--cp-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 56px;
+  text-align: center;
+}
+
+.activeLabel {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.plusBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #aa00e2;
+  border-radius: 18px;
+  width: 36px;
+  height: 36px;
+}

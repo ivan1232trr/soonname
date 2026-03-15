@@ -6,8 +6,17 @@
 
 // ── Imports ───────────────────────────────────────────────────────────────────
 
+import { existsSync } from "node:fs";
 // Node.js built-in for reading environment variables injected by the shell or a .env loader
 import process from "node:process";
+
+const LOCAL_ENV_FILES = [".env.local", ".env"] as const;
+
+for (const envFile of LOCAL_ENV_FILES) {
+  if (existsSync(envFile)) {
+    process.loadEnvFile(envFile);
+  }
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -50,6 +59,31 @@ function optionalEnv(key: string, defaultValue: string): string {
   return value.trim();
 }
 
+/**
+ * Reads an optional boolean environment variable.
+ * Accepts "true"/"1" and "false"/"0" (case-insensitive).
+ */
+function optionalBooleanEnv(key: string, defaultValue: boolean): boolean {
+  const value = process.env[key];
+  if (value === undefined || value.trim() === "") {
+    return defaultValue;
+  }
+
+  const normalised = value.trim().toLowerCase();
+  if (normalised === "true" || normalised === "1") {
+    return true;
+  }
+
+  if (normalised === "false" || normalised === "0") {
+    return false;
+  }
+
+  throw new Error(`Invalid boolean environment variable: ${key}`);
+}
+
+const nodeEnv = optionalEnv("NODE_ENV", "development");
+const defaultCorsOrigin = nodeEnv === "development" ? "*" : "https://citypulse.app";
+
 // ── Config object ─────────────────────────────────────────────────────────────
 
 /**
@@ -76,7 +110,7 @@ export const config = {
 
   // ── Anthropic ────────────────────────────────────────────────────────────
   // Anthropic API key for AI classification; required to run the classifier pipeline
-  anthropicApiKey: requireEnv("ANTHROPIC_API_KEY"),
+  anthropicApiKey: optionalEnv("ANTHROPIC_API_KEY", ""),
 
   // ── Auth ─────────────────────────────────────────────────────────────────
   // Secret used to sign and verify JWT tokens; must be long and random in production
@@ -84,11 +118,28 @@ export const config = {
 
   // ── Runtime ──────────────────────────────────────────────────────────────
   // Current runtime environment; controls log verbosity and error detail in responses
-  nodeEnv: optionalEnv("NODE_ENV", "development"),
+  nodeEnv,
+  // Comma-separated list of allowed browser origins for CORS, or "*" to allow all
+  corsOrigin: optionalEnv("CORS_ORIGIN", defaultCorsOrigin),
 
   // ── Derived helpers ───────────────────────────────────────────────────────
   // True when running in production; used to disable verbose error bodies in responses
-  isProd: optionalEnv("NODE_ENV", "development") === "production",
+  isProd: nodeEnv === "production",
   // True when running in development; used to enable pretty-printed Fastify logs
-  isDev: optionalEnv("NODE_ENV", "development") === "development",
+  isDev: nodeEnv === "development",
+  // True when Anthropic-backed event classification is configured
+  hasAnthropicApiKey: optionalEnv("ANTHROPIC_API_KEY", "") !== "",
+  // Optional S3-backed spatial index publishing config
+  s3: {
+    bucket: optionalEnv("S3_BUCKET", ""),
+    region: optionalEnv("S3_REGION", ""),
+    endpoint: optionalEnv("S3_ENDPOINT", ""),
+    accessKeyId: optionalEnv("S3_ACCESS_KEY_ID", ""),
+    secretAccessKey: optionalEnv("S3_SECRET_ACCESS_KEY", ""),
+    indexPrefix: optionalEnv("S3_INDEX_PREFIX", "event-index"),
+    forcePathStyle: optionalBooleanEnv("S3_FORCE_PATH_STYLE", false),
+    enabled:
+      optionalEnv("S3_BUCKET", "") !== "" &&
+      optionalEnv("S3_REGION", "") !== "",
+  },
 } as const; // Freeze the shape so no code can mutate config values at runtime

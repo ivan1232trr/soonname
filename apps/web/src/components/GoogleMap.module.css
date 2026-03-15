@@ -1,0 +1,48 @@
+.frame {
+  position: relative;
+  min-height: 220px;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid var(--cp-border);
+  background:
+    radial-gradient(circle at top left, rgba(170, 0, 226, 0.25), transparent 42%),
+    linear-gradient(180deg, rgba(24, 24, 27, 0.96), rgba(10, 10, 10, 0.96));
+}
+
+.canvas {
+  min-height: 220px;
+  width: 100%;
+}
+
+.fallback {
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 18px;
+  background:
+    linear-gradient(135deg, rgba(170, 0, 226, 0.22), rgba(249, 115, 22, 0.14)),
+    linear-gradient(180deg, rgba(39, 39, 42, 0.96), rgba(10, 10, 10, 0.96));
+}
+
+.eyebrow {
+  font-family: var(--font-space-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cp-text-tertiary);
+}
+
+.fallbackTitle {
+  font-family: var(--font-space-grotesk);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--cp-text-primary);
+}
+
+.fallbackBody {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--cp-text-secondary);
+}

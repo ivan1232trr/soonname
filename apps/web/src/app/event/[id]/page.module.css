@@ -1,0 +1,224 @@
+.navHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px 0;
+  flex-shrink: 0;
+}
+
+.backBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-manrope);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--cp-text-primary);
+  text-decoration: none;
+}
+
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  background: var(--cp-surface);
+  border: 1px solid var(--cp-border);
+}
+
+.categoryBar {
+  height: 4px;
+  width: 100%;
+  margin-top: 14px;
+  flex-shrink: 0;
+}
+
+.scrollContent {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.categoryTag {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 8px 12px;
+  border-radius: 999px;
+  color: #111114;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.title {
+  font-family: var(--font-space-grotesk);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.08;
+  color: var(--cp-text-primary);
+}
+
+.meta {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.metaRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-manrope);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--cp-text-secondary);
+}
+
+.divider {
+  height: 1px;
+  background: var(--cp-border);
+  flex-shrink: 0;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sectionTitle {
+  font-family: var(--font-space-grotesk);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--cp-text-primary);
+}
+
+.body {
+  font-family: var(--font-manrope);
+  font-size: 15px;
+  color: var(--cp-text-secondary);
+  line-height: 1.6;
+}
+
+.tagsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tagPrimary {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #aa00e2;
+  font-family: var(--font-manrope);
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.tagMuted {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--cp-surface-elevated);
+  font-family: var(--font-manrope);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--cp-text-secondary);
+}
+
+.postedBy {
+  font-family: var(--font-space-mono);
+  font-size: 12px;
+  color: var(--cp-text-tertiary);
+}
+
+.stickyFooter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 24px;
+  background: var(--cp-surface);
+  border-top: 1px solid var(--cp-border);
+  flex-shrink: 0;
+}
+
+.interestedBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1;
+  height: 48px;
+  background: #aa00e2;
+  border-radius: 999px;
+  font-family: var(--font-manrope);
+  font-size: 16px;
+  font-weight: 700;
+  color: #000000;
+}
+
+.shareBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: var(--cp-surface-elevated);
+  border: 1px solid var(--cp-border);
+  border-radius: 999px;
+}
+
+.pendingBanner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, rgba(170, 0, 226, 0.12), rgba(101, 3, 134, 0.08));
+  border: 1px solid rgba(170, 0, 226, 0.3);
+  border-radius: 12px;
+}
+
+.pendingIcon {
+  flex-shrink: 0;
+  animation: pendingPulse 1.5s ease-in-out infinite;
+}
+
+.pendingText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pendingTitle {
+  font-family: var(--font-manrope);
+  font-size: 13px;
+  font-weight: 700;
+  color: #cc33ff;
+}
+
+.pendingBody {
+  font-family: var(--font-manrope);
+  font-size: 12px;
+  color: var(--cp-text-secondary);
+  line-height: 1.4;
+}
+
+@keyframes pendingPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}

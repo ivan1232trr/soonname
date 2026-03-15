@@ -1,0 +1,114 @@
+.content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 48px 24px 32px;
+  background: var(--cp-bg);
+}
+
+.brand {
+  font-family: var(--font-inter);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: #ffffff;
+}
+
+.spacer64 {
+  height: 64px;
+}
+
+.spacer32 {
+  height: 32px;
+}
+
+.spacer8 {
+  height: 8px;
+}
+
+.flex {
+  flex: 1;
+}
+
+.heading {
+  font-family: var(--font-inter);
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #ffffff;
+  white-space: pre-line;
+  margin-bottom: 8px;
+}
+
+.subheading {
+  font-family: var(--font-inter);
+  font-size: 15px;
+  color: var(--cp-text-secondary);
+}
+
+.searchBox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 52px;
+  padding: 0 16px;
+  background: var(--cp-surface);
+  border: 1px solid var(--cp-border);
+  border-radius: 12px;
+}
+
+.searchInput {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  font-family: var(--font-inter);
+  font-size: 15px;
+  color: var(--cp-text-primary);
+}
+
+.searchInput::placeholder {
+  color: var(--cp-text-muted);
+}
+
+.suggList {
+  background: var(--cp-surface);
+  border: 1px solid var(--cp-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.suggItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 52px;
+  padding: 0 16px;
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-inter);
+  font-size: 15px;
+  color: #ffffff;
+  text-align: left;
+}
+
+.suggBorder {
+  border-bottom: 1px solid var(--cp-border);
+}
+
+.locationBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 48px;
+  font-family: var(--font-inter);
+  font-size: 14px;
+  color: var(--cp-text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+}

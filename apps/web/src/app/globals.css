@@ -1,0 +1,74 @@
+:root {
+  --cp-bg: #0a0a0a;
+  --cp-surface: #18181b;
+  --cp-surface-elevated: #27272a;
+  --cp-border: #27272a;
+  --cp-border-muted: #3f3f46;
+  --cp-primary: #aa00e2;
+  --cp-primary-fg: #ffffff;
+  --cp-text-primary: #ffffff;
+  --cp-text-secondary: #a1a1aa;
+  --cp-text-tertiary: #71717a;
+  --cp-text-muted: #52525b;
+  --cat-entertainment: #eab308;
+  --cat-food: #f97316;
+  --cat-nightlife: #7c3aed;
+  --cat-wellness: #15803d;
+  --cat-culture: #ec4899;
+  --cat-sports: #fa541c;
+  --font-inter: 'Inter', system-ui, sans-serif;
+  --font-space-grotesk: 'Space Grotesk', system-ui, sans-serif;
+  --font-manrope: 'Manrope', system-ui, sans-serif;
+  --font-space-mono: 'Space Mono', monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--cp-bg);
+  color: var(--cp-text-primary);
+  font-family: var(--font-inter);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: inherit;
+  color: inherit;
+}
+
+input,
+textarea,
+select {
+  font-family: inherit;
+}
+
+.shell {
+  max-width: 402px;
+  margin: 0 auto;
+  min-height: 100svh;
+  background: var(--cp-bg);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}

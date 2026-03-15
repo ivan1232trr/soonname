@@ -7,7 +7,7 @@
 // ── Imports ───────────────────────────────────────────────────────────────────
 
 // h3-js provides the core H3 cell encoding and grid distance functions
-import { latLngToCell, gridDistance } from "h3-js";
+import { latLngToCell, gridDistance, polygonToCells, gridDisk } from "h3-js";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -21,8 +21,12 @@ import { latLngToCell, gridDistance } from "h3-js";
  */
 // Named resolution constants so magic numbers never appear in application code
 export const RESOLUTIONS = {
+  // Coarse clustering granularity (~3.2 km); used for server-side map clustering
+  CLUSTER: 6,
   // City-district granularity; used for broad geographic grouping on the map
   CITY: 7,
+  // Nearby search granularity (~460 m); used for gridDisk radius queries
+  NEARBY: 8,
   // Neighbourhood granularity; used as the primary ranking dimension for proximity scoring
   NEIGHBORHOOD: 9,
   // Venue-level granularity; used for precise co-location detection
@@ -37,6 +41,12 @@ export const RESOLUTIONS = {
 // Cap ring distance so ranking never excludes distant events entirely — just deprioritises them
 export const DEFAULT_NEARBY_RINGS = 5;
 
+/**
+ * Maximum number of H3 cells allowed in a single viewport query.
+ * If the viewport produces more cells than this, the resolution is too high for the zoom level.
+ */
+const MAX_VIEWPORT_CELLS = 500;
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 /**
@@ -44,11 +54,10 @@ export const DEFAULT_NEARBY_RINGS = 5;
  * Each field represents the same location at a different level of precision.
  */
 export interface H3Indexes {
-  // H3 cell at resolution 7; stored in Event.h3R7 in the database
+  r6: string;
   r7: string;
-  // H3 cell at resolution 9; primary proximity-ranking key
+  r8: string;
   r9: string;
-  // H3 cell at resolution 11; venue-level precision for co-location checks
   r11: string;
 }
 
@@ -64,17 +73,12 @@ export interface H3Indexes {
  * @sideEffects - None; pure transformation with no I/O
  */
 export function getH3Indexes(lat: number, lng: number): H3Indexes {
-  // Encode the coordinate at resolution 7 for city-district level grouping
+  const r6 = latLngToCell(lat, lng, RESOLUTIONS.CLUSTER);
   const r7 = latLngToCell(lat, lng, RESOLUTIONS.CITY);
-
-  // Encode the coordinate at resolution 9 for neighbourhood proximity ranking
+  const r8 = latLngToCell(lat, lng, RESOLUTIONS.NEARBY);
   const r9 = latLngToCell(lat, lng, RESOLUTIONS.NEIGHBORHOOD);
-
-  // Encode the coordinate at resolution 11 for venue-level precision
   const r11 = latLngToCell(lat, lng, RESOLUTIONS.VENUE);
-
-  // Return all three as a named object so callers can destructure only what they need
-  return { r7, r9, r11 };
+  return { r6, r7, r8, r9, r11 };
 }
 
 /**
@@ -109,5 +113,101 @@ export function getGridDistance(cellA: string, cellB: string): number {
     // On any unexpected error (e.g. malformed cell string) return the maximum cap
     // This ensures ranking degrades gracefully rather than throwing 500 errors
     return DEFAULT_NEARBY_RINGS;
+  }
+}
+
+/**
+ * Maps a Google Maps zoom level to the appropriate H3 resolution for viewport queries.
+ * The resolution is chosen so that the number of cells covering the viewport stays manageable.
+ *
+ * @param zoom - Google Maps zoom level (typically 1–21)
+ * @returns    - H3 resolution (7, 9, or 11)
+ */
+export function zoomToResolution(zoom: number): number {
+  if (zoom >= 15) return RESOLUTIONS.VENUE;
+  if (zoom >= 11) return RESOLUTIONS.NEIGHBORHOOD;
+  return RESOLUTIONS.CITY;
+}
+
+/**
+ * The H3 field name corresponding to each resolution, for building Prisma WHERE clauses.
+ */
+export function resolutionToField(resolution: number): "h3R7" | "h3R9" | "h3R11" {
+  if (resolution === RESOLUTIONS.VENUE) return "h3R11";
+  if (resolution === RESOLUTIONS.NEIGHBORHOOD) return "h3R9";
+  return "h3R7";
+}
+
+/**
+ * Viewport bounds representing the visible map area.
+ */
+export interface ViewportBounds {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+}
+
+/**
+ * Converts viewport bounds to a set of H3 cell indexes at the appropriate resolution.
+ * Used to filter events so only those within the visible map area are returned.
+ *
+ * @param bounds     - The visible map viewport (north/south/east/west lat/lng)
+ * @param resolution - H3 resolution to use (from zoomToResolution)
+ * @returns          - Array of H3 cell index strings covering the viewport, or null if too many cells
+ */
+/**
+ * Haversine distance in kilometres between two WGS-84 coordinates.
+ */
+export function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+/**
+ * Converts a radius in km to the k-ring size for H3 resolution 8 (~460m per ring).
+ * Capped at 12 to prevent massive gridDisk arrays.
+ */
+export function radiusToKRing(radiusKm: number): number {
+  return Math.min(Math.ceil(radiusKm / 0.46), 12);
+}
+
+/**
+ * Returns all H3 cells within k rings of a center point at resolution 8.
+ */
+export function getNearbyCells(lat: number, lng: number, radiusKm: number): string[] {
+  const centerCell = latLngToCell(lat, lng, RESOLUTIONS.NEARBY);
+  const k = radiusToKRing(radiusKm);
+  return gridDisk(centerCell, k);
+}
+
+export function getViewportCells(bounds: ViewportBounds, resolution: number): string[] | null {
+  const { north, south, east, west } = bounds;
+
+  // Build a polygon from the bounding box corners (h3-js expects [lat, lng] pairs)
+  const polygon: [number, number][] = [
+    [south, west],
+    [north, west],
+    [north, east],
+    [south, east],
+    [south, west],
+  ];
+
+  try {
+    const cells = polygonToCells(polygon, resolution, false);
+
+    // Safety check: if the viewport generates too many cells, return null to signal fallback
+    if (cells.length > MAX_VIEWPORT_CELLS) {
+      return null;
+    }
+
+    return cells;
+  } catch {
+    return null;
   }
 }

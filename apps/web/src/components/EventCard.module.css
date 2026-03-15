@@ -1,0 +1,75 @@
+.card {
+  display: flex;
+  border-radius: 20px;
+  background: var(--cp-surface);
+  border: 1px solid var(--cp-border);
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+}
+
+.colorBar {
+  width: 4px;
+  flex-shrink: 0;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  font-family: var(--font-space-grotesk);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--cp-text-primary);
+}
+
+.datetime {
+  font-family: var(--font-space-mono);
+  font-size: 12px;
+  color: var(--cp-text-tertiary);
+}
+
+.locationRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.locationText {
+  font-family: var(--font-manrope);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--cp-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tagRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.tag {
+  font-family: var(--font-manrope);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--cp-text-secondary);
+  background: var(--cp-surface-elevated);
+  border-radius: 999px;
+  padding: 3px 10px;
+}

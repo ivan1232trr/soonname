@@ -13,15 +13,21 @@ import { z } from "zod";
 // Shared TypeScript types: EventCategory enum for query/body validation
 import { EventCategory } from "@citypulse/types";
 // H3 helpers: compute three-resolution indexes from a lat/lng coordinate
-import { getH3Indexes } from "../lib/h3.js";
+import { getH3Indexes, getViewportCells, zoomToResolution, resolutionToField } from "../lib/h3.js";
 // H3 helper: convert lat/lng to a resolution-9 cell for proximity ranking
 import { latLngToCell } from "h3-js";
 // Ranking engine: sorts events by proximity or date depending on whether a location is supplied
 import { rankEvents } from "../lib/ranking.js";
 // Prisma enums for event status and category filtering
-import { EventStatus, EventCategory as PrismaEventCategory } from "@prisma/client";
+import {
+  EventStatus,
+  EventCategory as PrismaEventCategory,
+  type Prisma,
+} from "@prisma/client";
 // Classifier queue: enqueue classification jobs after a new event is inserted
 import { classifierQueue } from "../lib/classifier-queue.js";
+import { publishSpatialIndexDocument } from "../lib/spatial-index-storage.js";
+import { config } from "../config.js";
 
 // ── Validation schemas ────────────────────────────────────────────────────────
 
@@ -66,6 +72,19 @@ const getEventsQuerySchema = z.object({
   lat: z.coerce.number().min(-90).max(90).optional(),
   // Optional longitude for proximity ranking; coerced from the query string
   lng: z.coerce.number().min(-180).max(180).optional(),
+  // Optional full-text search query across title, description, location, and tags
+  q: z.string().trim().min(1).optional(),
+  // Viewport bounds for H3-based spatial filtering
+  north: z.coerce.number().min(-90).max(90).optional(),
+  south: z.coerce.number().min(-90).max(90).optional(),
+  east: z.coerce.number().min(-180).max(180).optional(),
+  west: z.coerce.number().min(-180).max(180).optional(),
+  // Google Maps zoom level; determines H3 resolution for viewport queries
+  zoom: z.coerce.number().min(1).max(22).optional(),
+});
+
+const getEventParamsSchema = z.object({
+  id: z.string().uuid("Event id must be a valid UUID"),
 });
 
 // ── Route plugin ──────────────────────────────────────────────────────────────
@@ -82,7 +101,133 @@ const getEventsQuerySchema = z.object({
  * @returns       - A Promise that resolves once both routes are registered
  * @sideEffects   - POST /events writes to PostgreSQL and enqueues a BullMQ job
  */
+const previewBodySchema = z.object({
+  title: z.string().min(3, "Title must be at least 3 characters"),
+  description: z.string().min(20, "Description must be at least 20 characters"),
+});
+
 export async function eventRoutes(fastify: FastifyInstance): Promise<void> {
+  // ── POST /events/preview ──────────────────────────────────────────────────
+  // Calls the AI classifier without saving — returns predicted category and tags
+
+  fastify.post(
+    "/events/preview",
+    { preHandler: [fastify.authenticate] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const parseResult = previewBodySchema.safeParse(request.body);
+
+      if (!parseResult.success) {
+        const details = parseResult.error.errors.map((e) => ({
+          field: e.path.join("."),
+          message: e.message,
+        }));
+        return reply.status(400).send({ error: "Validation failed", details });
+      }
+
+      if (!config.hasAnthropicApiKey) {
+        return reply.status(200).send({
+          category: null,
+          tags: [],
+          message: "AI classification is not configured — events will be published without classification.",
+        });
+      }
+
+      try {
+        const { default: Anthropic } = await import("@anthropic-ai/sdk");
+        const anthropic = new Anthropic({ apiKey: config.anthropicApiKey });
+
+        const { title, description } = parseResult.data;
+
+        const prompt = `You are a city events classifier. Classify the following event and return ONLY a JSON object with no other text.
+
+Event Title: ${title}
+Event Description: ${description}
+
+Return a JSON object with exactly these two fields:
+- "category": one of exactly these values: NIGHTLIFE, SPORTS, EDUCATION, FOOD, WELLNESS, CULTURE, ENTERTAINMENT
+- "tags": an array of 2 to 8 lowercase slug strings describing the event (e.g. "live-music", "free", "outdoor", "family-friendly", "18-plus", "fitness", "art")
+
+Example response:
+{"category":"ENTERTAINMENT","tags":["live-music","free","outdoor"]}
+
+Respond with only the JSON object. No explanation, no markdown, no code blocks.`;
+
+        const message = await anthropic.messages.create({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 256,
+          messages: [{ role: "user", content: prompt }],
+        });
+
+        const firstBlock = message.content[0];
+        if (firstBlock === undefined || firstBlock.type !== "text") {
+          return reply.status(500).send({ error: "AI returned no text content" });
+        }
+
+        const parsed = JSON.parse(firstBlock.text.trim()) as { category: string; tags: string[] };
+        return reply.status(200).send(parsed);
+      } catch (error) {
+        fastify.log.error({ error }, "Failed to preview classification");
+        return reply.status(500).send({ error: "AI classification preview failed" });
+      }
+    }
+  );
+
+  fastify.get(
+    "/events/:id",
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const parseResult = getEventParamsSchema.safeParse(request.params);
+
+      if (!parseResult.success) {
+        const details = parseResult.error.errors.map((e) => ({
+          field: e.path.join("."),
+          message: e.message,
+        }));
+        return reply.status(400).send({ error: "Validation failed", details });
+      }
+
+      try {
+        // Try to extract userId from JWT if present (optional auth)
+        let userId: string | undefined;
+        try {
+          await fastify.authenticate(request, reply);
+          userId = request.user?.userId;
+        } catch {
+          // No auth — that's fine, public access
+        }
+
+        const event = await fastify.prisma.event.findFirst({
+          where: {
+            id: parseResult.data.id,
+            // Show ACTIVE events to everyone, or any status to the submitter
+            OR: [
+              { status: EventStatus.ACTIVE },
+              ...(userId !== undefined ? [{ submittedById: userId }] : []),
+            ],
+          },
+          include: {
+            tags: true,
+            city: true,
+            submittedBy: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        });
+
+        if (event === null) {
+          return reply.status(404).send({ error: "Event not found" });
+        }
+
+        return reply.status(200).send(event);
+      } catch (error) {
+        fastify.log.error({ error }, "Failed to fetch event");
+        return reply.status(500).send({ error: "Failed to fetch event" });
+      }
+    }
+  );
+
   // ── POST /events ──────────────────────────────────────────────────────────
 
   fastify.post(
@@ -112,7 +257,11 @@ export async function eventRoutes(fastify: FastifyInstance): Promise<void> {
 
       // Compute the three H3 cell indexes from the submitted coordinates
       // These are stored on the event for spatial ranking without recomputing at query time
-      const { r7, r9, r11 } = getH3Indexes(body.latitude, body.longitude);
+      const { r6, r7, r8, r9, r11 } = getH3Indexes(body.latitude, body.longitude);
+
+      const nextStatus = config.hasAnthropicApiKey
+        ? EventStatus.PENDING_CLASSIFICATION
+        : EventStatus.ACTIVE;
 
       // Wrap the database write in a try/catch so Prisma errors become structured 500 responses
       try {
@@ -130,11 +279,10 @@ export async function eventRoutes(fastify: FastifyInstance): Promise<void> {
             latitude: body.latitude,
             // Raw coordinate stored for map pin rendering
             longitude: body.longitude,
-            // H3 cell at resolution 7; used for city-district grouping queries
+            h3R6: r6,
             h3R7: r7,
-            // H3 cell at resolution 9; primary proximity ranking key
+            h3R8: r8,
             h3R9: r9,
-            // H3 cell at resolution 11; venue-level precision for co-location
             h3R11: r11,
             // Category is null until the AI classifier processes the job; schema allows nullable
             category: null,
@@ -145,7 +293,7 @@ export async function eventRoutes(fastify: FastifyInstance): Promise<void> {
             // Convert optional end time; undefined maps to null in Prisma
             endTime: body.endTime !== undefined ? new Date(body.endTime) : null,
             // New events are hidden from the feed until classification completes
-            status: EventStatus.PENDING_CLASSIFICATION,
+            status: nextStatus,
             // Link to the city so feed queries can scope by cityId
             cityId: body.cityId,
             // Resolved from the authenticated JWT; the client does not supply this field
@@ -160,14 +308,29 @@ export async function eventRoutes(fastify: FastifyInstance): Promise<void> {
           },
         });
 
-        // Enqueue the classification job so the AI worker can process it asynchronously
-        // The HTTP response returns immediately; classification happens in the background
-        await classifierQueue.add(
-          // Job name for BullMQ's queue dashboard and logging
-          "classify-event",
-          // Payload: just the eventId so the worker fetches the full record from Postgres
-          { eventId: event.id }
-        );
+        await publishSpatialIndexDocument({
+          id: event.id,
+          cityId: event.cityId,
+          title: event.title,
+          description: event.description,
+          locationName: event.locationName,
+          latitude: event.latitude,
+          longitude: event.longitude,
+          h3R7: event.h3R7,
+          h3R9: event.h3R9,
+          h3R11: event.h3R11,
+          category: event.category,
+          status: event.status,
+          tags: event.tags.map((tag) => tag.name),
+          eventDate: event.eventDate,
+          startTime: event.startTime,
+          endTime: event.endTime,
+          updatedAt: event.updatedAt,
+        });
+
+        if (config.hasAnthropicApiKey) {
+          await classifierQueue.add("classify-event", { eventId: event.id });
+        }
 
         // Return 201 Created with the full saved event record (status: PENDING_CLASSIFICATION)
         return reply.status(201).send(event);
@@ -208,7 +371,7 @@ export async function eventRoutes(fastify: FastifyInstance): Promise<void> {
 
       // Build the Prisma where clause; always filter by cityId and ACTIVE status
       // so the feed only shows approved events in the requested city
-      const where = {
+      const where: Prisma.EventWhereInput = {
         // Restrict to the requested city — all feed queries are city-scoped
         cityId: query.cityId,
         // Only show events that have been classified and approved
@@ -218,7 +381,52 @@ export async function eventRoutes(fastify: FastifyInstance): Promise<void> {
           // Cast to Prisma's generated enum type to satisfy the type checker
           category: query.category as unknown as PrismaEventCategory,
         }),
+        ...(query.q !== undefined && {
+          OR: [
+            { title: { contains: query.q, mode: "insensitive" } },
+            { description: { contains: query.q, mode: "insensitive" } },
+            { locationName: { contains: query.q, mode: "insensitive" } },
+            {
+              tags: {
+                some: {
+                  name: { contains: query.q, mode: "insensitive" },
+                },
+              },
+            },
+          ],
+        }),
       };
+
+      // H3 viewport filtering: only fetch events within the visible map area
+      const hasViewport =
+        query.north !== undefined &&
+        query.south !== undefined &&
+        query.east !== undefined &&
+        query.west !== undefined;
+
+      if (hasViewport) {
+        const zoom = query.zoom ?? 12;
+        const resolution = zoomToResolution(zoom);
+        const h3Field = resolutionToField(resolution);
+        const cells = getViewportCells(
+          {
+            north: query.north!,
+            south: query.south!,
+            east: query.east!,
+            west: query.west!,
+          },
+          resolution
+        );
+
+        if (cells !== null && cells.length > 0) {
+          // Filter events whose H3 cell at the chosen resolution is within the viewport cells
+          where[h3Field] = { in: cells };
+        } else {
+          // Fallback to bounding box when H3 cell count exceeds safety limit
+          where.latitude = { gte: query.south!, lte: query.north! };
+          where.longitude = { gte: query.west!, lte: query.east! };
+        }
+      }
 
       // Wrap the database read in a try/catch so Prisma errors become structured 500 responses
       try {
@@ -232,6 +440,12 @@ export async function eventRoutes(fastify: FastifyInstance): Promise<void> {
             tags: true,
             // Return the city record so clients know the timezone
             city: true,
+            submittedBy: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
           },
         });
 

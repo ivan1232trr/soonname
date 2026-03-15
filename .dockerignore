@@ -1,0 +1,17 @@
+node_modules
+.pnpm-store
+.git
+.next
+dist
+build
+coverage
+.nyc_output
+*.log
+.env
+.env.local
+.env.*.local
+.env.docker
+apps/api/.env
+apps/web/.env.local
+untitled.pen
+untitled (1).pen

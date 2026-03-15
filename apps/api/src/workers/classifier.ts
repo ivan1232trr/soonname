@@ -16,6 +16,7 @@ import { PrismaClient, EventCategory, EventStatus } from "@prisma/client";
 import type { ClassifierJobData } from "../lib/classifier-queue.js";
 // Validated config provides the Redis URL and Anthropic API key
 import { config } from "../config.js";
+import { publishSpatialIndexDocument } from "../lib/spatial-index-storage.js";
 
 // ── Clients ───────────────────────────────────────────────────────────────────
 
@@ -143,7 +144,7 @@ export function startClassifierWorker(): Worker<ClassifierJobData> {
   // Create the worker consuming from the same queue name used by the producer
   const worker = new Worker<ClassifierJobData>(
     // Queue name must exactly match the name used in classifier-queue.ts
-    "citypulse:classifier",
+    "citypulse-classifier",
     // Job processor function: receives a Job and returns a Promise
     async (job) => {
       // Extract the eventId from the job data; this is all the worker needs to start
@@ -211,7 +212,7 @@ export function startClassifierWorker(): Worker<ClassifierJobData> {
       );
 
       // Update the event record with the classification results and flip to ACTIVE
-      await prisma.event.update({
+      const updatedEvent = await prisma.event.update({
         // Target the specific event being classified
         where: { id: eventId },
         data: {
@@ -225,6 +226,29 @@ export function startClassifierWorker(): Worker<ClassifierJobData> {
           // Flip the event status to ACTIVE so it appears in the public feed
           status: EventStatus.ACTIVE,
         },
+        include: {
+          tags: true,
+        },
+      });
+
+      await publishSpatialIndexDocument({
+        id: updatedEvent.id,
+        cityId: updatedEvent.cityId,
+        title: updatedEvent.title,
+        description: updatedEvent.description,
+        locationName: updatedEvent.locationName,
+        latitude: updatedEvent.latitude,
+        longitude: updatedEvent.longitude,
+        h3R7: updatedEvent.h3R7,
+        h3R9: updatedEvent.h3R9,
+        h3R11: updatedEvent.h3R11,
+        category: updatedEvent.category,
+        status: updatedEvent.status,
+        tags: updatedEvent.tags.map((tag) => tag.name),
+        eventDate: updatedEvent.eventDate,
+        startTime: updatedEvent.startTime,
+        endTime: updatedEvent.endTime,
+        updatedAt: updatedEvent.updatedAt,
       });
 
       // Log successful classification for monitoring and debugging

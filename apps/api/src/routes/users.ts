@@ -73,6 +73,29 @@ const updateProfileBodySchema = z.object({
  * @sideEffects   - Reads and writes to the users and user_profiles tables via Prisma
  */
 export async function userRoutes(fastify: FastifyInstance): Promise<void> {
+  // ── GET /users/me/events ────────────────────────────────────────────────
+
+  fastify.get(
+    "/users/me/events",
+    { preHandler: [fastify.authenticate] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const events = await fastify.prisma.event.findMany({
+          where: { submittedById: request.user.userId },
+          include: {
+            tags: true,
+            city: true,
+          },
+          orderBy: { createdAt: "desc" },
+        });
+        return reply.status(200).send(events);
+      } catch (error) {
+        fastify.log.error({ error }, "Failed to fetch user events");
+        return reply.status(500).send({ error: "Failed to fetch your events" });
+      }
+    }
+  );
+
   // ── GET /users/me ─────────────────────────────────────────────────────────
 
   fastify.get(
