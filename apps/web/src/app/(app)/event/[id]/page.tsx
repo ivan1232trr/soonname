@@ -111,17 +111,25 @@ export default function EventDetailPage() {
 
     const shareUrl = window.location.href;
 
-    if (navigator.share !== undefined) {
-      await navigator.share({
-        title: event.title,
-        text: event.description,
-        url: shareUrl,
-      });
-      return;
-    }
+    try {
+      if (navigator.share !== undefined) {
+        await navigator.share({
+          title: event.title,
+          text: event.description,
+          url: shareUrl,
+        });
+        return;
+      }
 
-    await navigator.clipboard.writeText(shareUrl);
-    setSaveLabel("Link copied");
+      await navigator.clipboard.writeText(shareUrl);
+      setSaveLabel("Link copied");
+    } catch (cause) {
+      if (cause instanceof DOMException && cause.name === "AbortError") {
+        return;
+      }
+
+      setError(cause instanceof Error ? cause.message : "Failed to share event");
+    }
   };
 
   return (

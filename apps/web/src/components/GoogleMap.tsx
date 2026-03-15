@@ -53,6 +53,11 @@ interface GoogleMapProps {
   onViewportChange?: ((bounds: ViewportBounds) => void) | undefined; // Callback when the user pans or zooms
 }
 
+interface MarkerInstance {
+  marker: any;
+  clickListener: { remove?: () => void } | null;
+}
+
 let googleMapsPromise: Promise<void> | null = null;
 let googleMapsStatus: "idle" | "loading" | "loaded" | "failed" = "idle";
 let googleMapsFailureMessage: string | null = null;
@@ -97,6 +102,12 @@ const getReferrerHint = (): string => {
 const buildGoogleMapsSetupMessage = (reason: string): string =>
   `${reason} Enable the Maps JavaScript API and billing for this Google Cloud project, and ${getReferrerHint()}`;
 
+const markGoogleMapsAsFailed = (message: string): void => {
+  googleMapsStatus = "failed";
+  googleMapsFailureMessage = message;
+  googleMapsPromise = null;
+};
+
 const getDefaultCenter = (
   center: GoogleMapProps["center"],
   markers: MapMarker[]
@@ -112,26 +123,12 @@ const getDefaultCenter = (
   return { lat: 18.0179, lng: -76.8099 };
 };
 
-const clearMarkers = (googleMaps: any, markers: Map<string, any>): void => {
-  markers.forEach((marker) => {
-    googleMaps?.event?.clearInstanceListeners?.(marker);
+const clearMarkers = (markers: Map<string, MarkerInstance>): void => {
+  markers.forEach(({ marker, clickListener }) => {
+    clickListener?.remove?.();
     marker.setMap(null);
   });
   markers.clear();
-};
-
-const destroyMap = (
-  googleMaps: any,
-  container: HTMLDivElement | null,
-  map: any,
-  markers: Map<string, any>
-): void => {
-  clearMarkers(googleMaps, markers);
-  googleMaps?.event?.clearInstanceListeners?.(map);
-
-  if (container !== null) {
-    container.innerHTML = "";
-  }
 };
 
 const loadGoogleMaps = async (apiKey: string): Promise<void> => {
@@ -157,9 +154,7 @@ const loadGoogleMaps = async (apiKey: string): Promise<void> => {
     };
 
     const fail = (message: string) => {
-      googleMapsStatus = "failed";
-      googleMapsFailureMessage = message;
-      googleMapsPromise = null;
+      markGoogleMapsAsFailed(message);
       cleanup();
       reject(new Error(message));
     };
@@ -221,7 +216,8 @@ export default function GoogleMap({
 }: GoogleMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<any>(null);
-  const markerInstancesRef = useRef<Map<string, any>>(new Map());
+  const markerInstancesRef = useRef<Map<string, MarkerInstance>>(new Map());
+  const idleListenerRef = useRef<{ remove?: () => void } | null>(null);
   const viewportChangeRef = useRef(onViewportChange);
   const markerSelectRef = useRef(onMarkerSelect);
   const lastSelectedMarkerIdRef = useRef<string | null>(null);
@@ -265,7 +261,7 @@ export default function GoogleMap({
         mapRef.current = map;
         setIsMapReady(true);
 
-        map.addListener("idle", () => {
+        idleListenerRef.current = map.addListener("idle", () => {
           const handleViewportChange = viewportChangeRef.current;
           if (cancelled || handleViewportChange === undefined) {
             return;
@@ -297,13 +293,17 @@ export default function GoogleMap({
             return;
           }
 
-          destroyMap(googleMaps, containerRef.current, mapRef.current, markerInstancesRef.current);
+          const failureMessage = buildGoogleMapsSetupMessage(
+            "Google Maps rejected the current API key or project configuration."
+          );
+          markGoogleMapsAsFailed(failureMessage);
+          idleListenerRef.current?.remove?.();
+          idleListenerRef.current = null;
+          clearMarkers(markerInstancesRef.current);
           mapRef.current = null;
           lastSelectedMarkerIdRef.current = null;
           setIsMapReady(false);
-          setLoadError(
-            buildGoogleMapsSetupMessage("Google Maps rejected the current API key or project configuration.")
-          );
+          setLoadError(failureMessage);
         }, 1500);
       } catch (error) {
         if (!cancelled) {
@@ -320,11 +320,11 @@ export default function GoogleMap({
         window.clearTimeout(setupProbeTimer);
       }
 
-      const googleMaps = window.google?.maps;
-      destroyMap(googleMaps, containerRef.current, mapRef.current, markerInstancesRef.current);
+      idleListenerRef.current?.remove?.();
+      idleListenerRef.current = null;
+      clearMarkers(markerInstancesRef.current);
       mapRef.current = null;
       lastSelectedMarkerIdRef.current = null;
-      setIsMapReady(false);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps -- the map is initialized once; later prop changes are handled by dedicated effects
   }, [apiKey]);
@@ -336,7 +336,7 @@ export default function GoogleMap({
       return;
     }
 
-    clearMarkers(googleMaps, markerInstancesRef.current);
+    clearMarkers(markerInstancesRef.current);
     lastSelectedMarkerIdRef.current = null;
 
     const bounds = new googleMaps.LatLngBounds();
@@ -348,7 +348,7 @@ export default function GoogleMap({
         title: marker.title,
       });
 
-      googleMarker.addListener("click", () => {
+      const clickListener = googleMarker.addListener("click", () => {
         const handleMarkerSelect = markerSelectRef.current;
         if (handleMarkerSelect !== undefined) {
           handleMarkerSelect(marker.id);
@@ -359,7 +359,7 @@ export default function GoogleMap({
       });
 
       bounds.extend({ lat: marker.latitude, lng: marker.longitude });
-      markerInstancesRef.current.set(marker.id, googleMarker);
+      markerInstancesRef.current.set(marker.id, { marker: googleMarker, clickListener });
     });
 
     if (markers.length > 1) {
@@ -387,7 +387,7 @@ export default function GoogleMap({
 
     const previousMarkerId = lastSelectedMarkerIdRef.current;
     if (previousMarkerId !== null) {
-      markerInstancesRef.current.get(previousMarkerId)?.setAnimation(null);
+      markerInstancesRef.current.get(previousMarkerId)?.marker.setAnimation(null);
     }
 
     if (selectedMarkerId === undefined) {
@@ -401,13 +401,16 @@ export default function GoogleMap({
       return;
     }
 
-    selectedMarker.setAnimation(googleMaps.Animation.DROP);
+    selectedMarker.marker.setAnimation(googleMaps.Animation.DROP);
     lastSelectedMarkerIdRef.current = selectedMarkerId;
   }, [isMapReady, markers, selectedMarkerId]);
 
-  if (apiKey === "" || loadError !== null) {
-    return (
-      <div className={styles.frame}>
+  const showFallback = apiKey === "" || loadError !== null;
+
+  return (
+    <div className={styles.frame}>
+      <div ref={containerRef} className={styles.canvas} aria-hidden={showFallback} />
+      {showFallback ? (
         <div className={styles.fallback}>
           <p className={styles.eyebrow}>Google Maps</p>
           <p className={styles.fallbackTitle}>
@@ -426,13 +429,7 @@ export default function GoogleMap({
               : loadError}
           </p>
         </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className={styles.frame}>
-      <div ref={containerRef} className={styles.canvas} />
+      ) : null}
     </div>
   );
 }
