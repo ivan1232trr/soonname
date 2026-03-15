@@ -200,31 +200,37 @@ Respond with only the JSON object. No explanation, no markdown, no code blocks.`
           return reply.status(200).send({ event, reason: "Check out this event happening in your city!" });
         }
 
-        const { default: Anthropic } = await import("@anthropic-ai/sdk");
-        const anthropic = new Anthropic({ apiKey: config.anthropicApiKey });
+        try {
+          const { default: Anthropic } = await import("@anthropic-ai/sdk");
+          const anthropic = new Anthropic({ apiKey: config.anthropicApiKey });
 
-        const eventList = events
-          .map((e, i) => `${i + 1}. [${e.id}] ${e.title} (${e.category ?? "uncategorized"}) — ${e.description.slice(0, 120)}`)
-          .join("\n");
+          const eventList = events
+            .map((e, i) => `${i + 1}. [${e.id}] ${e.title} (${e.category ?? "uncategorized"}) — ${e.description.slice(0, 120)}`)
+            .join("\n");
 
-        const message = await anthropic.messages.create({
-          model: "claude-haiku-4-5-20251001",
-          max_tokens: 150,
-          messages: [{
-            role: "user",
-            content: `You are a city events guide. Pick the single most interesting event from this list and write one compelling sentence (max 20 words) about why someone should go.\n\nEvents:\n${eventList}\n\nRespond with ONLY a JSON object: {"id": "<event id>", "reason": "<one sentence>"}`,
-          }],
-        });
+          const message = await anthropic.messages.create({
+            model: "claude-haiku-4-5-20251001",
+            max_tokens: 150,
+            messages: [{
+              role: "user",
+              content: `You are a city events guide. Pick the single most interesting event from this list and write one compelling sentence (max 20 words) about why someone should go.\n\nEvents:\n${eventList}\n\nRespond with ONLY a JSON object: {"id": "<event id>", "reason": "<one sentence>"}`,
+            }],
+          });
 
-        const firstBlock = message.content[0];
-        if (firstBlock === undefined || firstBlock.type !== "text") {
-          throw new Error("No text response from AI");
+          const firstBlock = message.content[0];
+          if (firstBlock !== undefined && firstBlock.type === "text") {
+            const raw = firstBlock.text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+            const parsed = JSON.parse(raw) as { id: string; reason: string };
+            const suggestedEvent = events.find((e) => e.id === parsed.id) ?? events[0];
+            return reply.status(200).send({ event: suggestedEvent, reason: parsed.reason });
+          }
+        } catch (claudeError) {
+          fastify.log.warn({ error: claudeError }, "Claude suggest failed — falling back to random event");
         }
 
-        const parsed = JSON.parse(firstBlock.text.trim()) as { id: string; reason: string };
-        const suggestedEvent = events.find((e) => e.id === parsed.id) ?? events[0];
-
-        return reply.status(200).send({ event: suggestedEvent, reason: parsed.reason });
+        // Fallback: random pick when Claude is unavailable or returns bad output
+        const fallbackEvent = events[Math.floor(Math.random() * events.length)];
+        return reply.status(200).send({ event: fallbackEvent, reason: "Something happening in your city worth checking out." });
       } catch (error) {
         fastify.log.error({ error }, "Failed to suggest event");
         return reply.status(500).send({ error: "Failed to suggest event" });
