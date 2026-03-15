@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { EventCategory } from "@citypulse/types";
 import EventCard from "@/components/EventCard";
+import MobileLazyEventCard from "@/components/MobileLazyEventCard";
 import { IconNavigation, IconSearch } from "@/components/icons";
 import { ApiError, getCities, getEvents } from "@/lib/api";
 import type { ApiCity, ApiEvent } from "@/lib/api-types";
@@ -21,12 +22,15 @@ const CATEGORY_FILTERS: Array<{ label: string; value?: EventCategory }> = [
   { label: "Education", value: EventCategory.EDUCATION },
 ];
 
+const INITIAL_MOBILE_CARD_COUNT = 4;
+
 export default function FeedPage() {
   const [cities, setCities] = useState<ApiCity[]>([]);
   const [selectedCityId, setSelectedCityId] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<EventCategory | undefined>();
   const [events, setEvents] = useState<ApiEvent[]>([]);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,6 +66,29 @@ export default function FeedPage() {
   }, []);
 
   useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia("(max-width: 899px)");
+    const syncViewportMode = () => setIsMobileViewport(mediaQuery.matches);
+    const legacyMediaQuery = mediaQuery as MediaQueryList & {
+      addListener?: (listener: () => void) => void;
+      removeListener?: (listener: () => void) => void;
+    };
+
+    syncViewportMode();
+
+    if ("addEventListener" in mediaQuery) {
+      mediaQuery.addEventListener("change", syncViewportMode);
+      return () => mediaQuery.removeEventListener("change", syncViewportMode);
+    }
+
+    legacyMediaQuery.addListener?.(syncViewportMode);
+    return () => legacyMediaQuery.removeListener?.(syncViewportMode);
+  }, []);
+
+  useEffect(() => {
     if (selectedCityId === "") {
       return;
     }
@@ -90,6 +117,7 @@ export default function FeedPage() {
     () => cities.find((city) => city.id === selectedCityId) ?? null,
     [cities, selectedCityId]
   );
+  const cardEvents = useMemo(() => events.map(eventToCardData), [events]);
 
   return (
     <div className={`${styles.page} desktopWideLayout`}>
@@ -165,8 +193,17 @@ export default function FeedPage() {
         {error === null && !loading && events.length === 0 ? (
           <p className={styles.emptyState}>No active events matched this filter in the selected city.</p>
         ) : null}
-        {events.map((event) => (
-          <EventCard key={event.id} event={eventToCardData(event)} />
+        {cardEvents.map((event, index) => (
+          <div key={event.id} className={styles.feedItem}>
+            {isMobileViewport ? (
+              <MobileLazyEventCard
+                event={event}
+                eager={index < INITIAL_MOBILE_CARD_COUNT}
+              />
+            ) : (
+              <EventCard event={event} />
+            )}
+          </div>
         ))}
       </div>
     </div>

@@ -1,0 +1,65 @@
+.shell {
+  min-height: 152px;
+}
+
+.placeholder {
+  display: flex;
+  min-height: 152px;
+  border-radius: 20px;
+  background: var(--cp-surface);
+  border: 1px solid var(--cp-border);
+  overflow: hidden;
+}
+
+.colorBar {
+  width: 4px;
+  flex-shrink: 0;
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+}
+
+.titlePlaceholder,
+.datetimePlaceholder,
+.locationPlaceholder,
+.tagPlaceholder,
+.tagPlaceholderShort {
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(63, 63, 70, 0.85), rgba(82, 82, 91, 0.95));
+}
+
+.titlePlaceholder {
+  width: 78%;
+  height: 18px;
+}
+
+.datetimePlaceholder {
+  width: 52%;
+  height: 12px;
+}
+
+.locationPlaceholder {
+  width: 66%;
+  height: 13px;
+}
+
+.tagRow {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.tagPlaceholder {
+  width: 78px;
+  height: 20px;
+}
+
+.tagPlaceholderShort {
+  width: 58px;
+  height: 20px;
+}

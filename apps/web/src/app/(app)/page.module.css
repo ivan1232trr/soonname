@@ -148,13 +148,18 @@
 }
 
 .feedList {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 12px;
   padding: 0 24px calc(24px + var(--cp-bottom-nav-offset));
   overflow-y: auto;
   flex: 1;
   min-height: 0;
+}
+
+.feedItem {
+  flex: 0 0 auto;
+  min-width: 0;
 }
 
 .emptyState {
@@ -206,10 +211,15 @@
   }
 
   .feedList {
+    display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 16px;
     align-content: start;
     padding-bottom: calc(32px + var(--cp-bottom-nav-offset));
+  }
+
+  .feedItem {
+    min-height: 0;
   }
 }
 
