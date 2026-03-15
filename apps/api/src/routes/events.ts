@@ -106,6 +106,25 @@ const previewBodySchema = z.object({
   description: z.string().min(20, "Description must be at least 20 characters"),
 });
 
+const previewClassificationResultSchema = z.object({
+  category: z.nativeEnum(EventCategory).nullable(),
+  tags: z.array(z.string().trim().min(1).max(40)).max(8),
+});
+
+const suggestionResultSchema = z.object({
+  id: z.string().uuid(),
+  reason: z.string().trim().min(1).max(180),
+});
+
+const buildPreviewFallback = (message: string) => ({
+  category: null,
+  tags: [] as string[],
+  message,
+});
+
+const getRandomArrayItem = <T>(items: T[]): T =>
+  items[Math.floor(Math.random() * items.length)] as T;
+
 export async function eventRoutes(fastify: FastifyInstance): Promise<void> {
   // ── POST /events/preview ──────────────────────────────────────────────────
   // Calls the AI classifier without saving — returns predicted category and tags
@@ -125,11 +144,11 @@ export async function eventRoutes(fastify: FastifyInstance): Promise<void> {
       }
 
       if (!config.hasAnthropicApiKey) {
-        return reply.status(200).send({
-          category: null,
-          tags: [],
-          message: "AI classification is not configured — events will be published without classification.",
-        });
+        return reply.status(200).send(
+          buildPreviewFallback(
+            "AI classification is not configured — events will be published without classification."
+          )
+        );
       }
 
       try {
@@ -160,16 +179,37 @@ Respond with only the JSON object. No explanation, no markdown, no code blocks.`
 
         const firstBlock = message.content[0];
         if (firstBlock === undefined || firstBlock.type !== "text") {
-          return reply.status(500).send({ error: "AI returned no text content" });
+          fastify.log.warn("Preview classifier returned no text content");
+          return reply.status(200).send(
+            buildPreviewFallback(
+              "AI preview is temporarily unavailable — you can still submit without it."
+            )
+          );
         }
 
         // Strip markdown code fences if present (e.g. ```json ... ```)
         const rawText = firstBlock.text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
-        const parsed = JSON.parse(rawText) as { category: string; tags: string[] };
-        return reply.status(200).send(parsed);
+        const parsed = previewClassificationResultSchema.safeParse(JSON.parse(rawText));
+        if (!parsed.success) {
+          fastify.log.warn(
+            { issues: parsed.error.issues, rawText },
+            "Preview classifier returned an unexpected payload"
+          );
+          return reply.status(200).send(
+            buildPreviewFallback(
+              "AI preview is temporarily unavailable — you can still submit without it."
+            )
+          );
+        }
+
+        return reply.status(200).send(parsed.data);
       } catch (error) {
-        fastify.log.error({ error }, "Failed to preview classification");
-        return reply.status(500).send({ error: "AI classification preview failed" });
+        fastify.log.warn({ error }, "Failed to preview classification, returning fallback");
+        return reply.status(200).send(
+          buildPreviewFallback(
+            "AI preview is temporarily unavailable — you can still submit without it."
+          )
+        );
       }
     }
   );
@@ -184,10 +224,26 @@ Respond with only the JSON object. No explanation, no markdown, no code blocks.`
           where: { status: EventStatus.ACTIVE },
           orderBy: { createdAt: "desc" },
           take: 10,
-          include: {
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            locationName: true,
+            latitude: true,
+            longitude: true,
+            h3R7: true,
+            h3R9: true,
+            h3R11: true,
+            category: true,
             tags: true,
-            city: true,
-            submittedBy: { select: { id: true, name: true } },
+            eventDate: true,
+            startTime: true,
+            endTime: true,
+            status: true,
+            cityId: true,
+            submittedById: true,
+            createdAt: true,
+            updatedAt: true,
           },
         });
 
@@ -196,7 +252,7 @@ Respond with only the JSON object. No explanation, no markdown, no code blocks.`
         }
 
         if (!config.hasAnthropicApiKey) {
-          const event = events[Math.floor(Math.random() * events.length)];
+          const event = getRandomArrayItem(events);
           return reply.status(200).send({ event, reason: "Check out this event happening in your city!" });
         }
 
@@ -220,16 +276,24 @@ Respond with only the JSON object. No explanation, no markdown, no code blocks.`
           const firstBlock = message.content[0];
           if (firstBlock !== undefined && firstBlock.type === "text") {
             const raw = firstBlock.text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
-            const parsed = JSON.parse(raw) as { id: string; reason: string };
-            const suggestedEvent = events.find((e) => e.id === parsed.id) ?? events[0];
-            return reply.status(200).send({ event: suggestedEvent, reason: parsed.reason });
+            const parsed = suggestionResultSchema.safeParse(JSON.parse(raw));
+
+            if (parsed.success) {
+              const suggestedEvent = events.find((e) => e.id === parsed.data.id) ?? events[0];
+              return reply.status(200).send({ event: suggestedEvent, reason: parsed.data.reason });
+            }
+
+            fastify.log.warn(
+              { issues: parsed.error.issues, raw },
+              "Claude suggest returned an unexpected payload"
+            );
           }
         } catch (claudeError) {
           fastify.log.warn({ error: claudeError }, "Claude suggest failed — falling back to random event");
         }
 
         // Fallback: random pick when Claude is unavailable or returns bad output
-        const fallbackEvent = events[Math.floor(Math.random() * events.length)];
+        const fallbackEvent = getRandomArrayItem(events);
         return reply.status(200).send({ event: fallbackEvent, reason: "Something happening in your city worth checking out." });
       } catch (error) {
         fastify.log.error({ error }, "Failed to suggest event");

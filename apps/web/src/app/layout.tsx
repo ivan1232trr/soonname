@@ -4,9 +4,22 @@ import { Inter, Space_Grotesk, Manrope, Space_Mono } from "next/font/google";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
-const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-space-grotesk" });
-const manrope = Manrope({ subsets: ["latin"], variable: "--font-manrope" });
-const spaceMono = Space_Mono({ subsets: ["latin"], weight: ["400", "700"], variable: "--font-space-mono" });
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-space-grotesk",
+  preload: false,
+});
+const manrope = Manrope({
+  subsets: ["latin"],
+  variable: "--font-manrope",
+  preload: false,
+});
+const spaceMono = Space_Mono({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  variable: "--font-space-mono",
+  preload: false,
+});
 
 export const metadata: Metadata = {
   title: "EventGo — What's happening near you",

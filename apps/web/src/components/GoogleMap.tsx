@@ -56,11 +56,26 @@ interface GoogleMapProps {
 interface MarkerInstance {
   marker: any;
   clickListener: { remove?: () => void } | null;
+  pin: any | null;
 }
 
 let googleMapsPromise: Promise<void> | null = null;
 let googleMapsStatus: "idle" | "loading" | "loaded" | "failed" = "idle";
 let googleMapsFailureMessage: string | null = null;
+
+const DEFAULT_MARKER_STYLE = {
+  background: "#650386",
+  borderColor: "#f5d0fe",
+  glyphColor: "#ffffff",
+  scale: 1,
+} as const;
+
+const SELECTED_MARKER_STYLE = {
+  background: "#f59e0b",
+  borderColor: "#fef3c7",
+  glyphColor: "#111827",
+  scale: 1.18,
+} as const;
 
 const MAP_STYLES = [
   {
@@ -126,9 +141,27 @@ const getDefaultCenter = (
 const clearMarkers = (markers: Map<string, MarkerInstance>): void => {
   markers.forEach(({ marker, clickListener }) => {
     clickListener?.remove?.();
-    marker.setMap(null);
+    if ("map" in marker) {
+      marker.map = null;
+      return;
+    }
+
+    marker.setMap?.(null);
   });
   markers.clear();
+};
+
+const applyMarkerState = (markerInstance: MarkerInstance, isSelected: boolean): void => {
+  const markerStyle = isSelected ? SELECTED_MARKER_STYLE : DEFAULT_MARKER_STYLE;
+
+  if (markerInstance.pin !== null) {
+    markerInstance.pin.background = markerStyle.background;
+    markerInstance.pin.borderColor = markerStyle.borderColor;
+    markerInstance.pin.glyphColor = markerStyle.glyphColor;
+    markerInstance.pin.scale = markerStyle.scale;
+  }
+
+  markerInstance.marker.zIndex = isSelected ? 1000 : 1;
 };
 
 const loadGoogleMaps = async (apiKey: string): Promise<void> => {
@@ -195,7 +228,7 @@ const loadGoogleMaps = async (apiKey: string): Promise<void> => {
     script.id = "google-maps-script";
     script.src =
       `https://maps.googleapis.com/maps/api/js?key=${apiKey}` +
-      "&loading=async&callback=__initGoogleMaps";
+      "&loading=async&libraries=marker&v=weekly&callback=__initGoogleMaps";
     script.async = true;
     script.defer = true;
     script.onerror = () => {
@@ -224,6 +257,7 @@ export default function GoogleMap({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
+  const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID?.trim() || "DEMO_MAP_ID";
 
   useEffect(() => {
     viewportChangeRef.current = onViewportChange;
@@ -251,10 +285,18 @@ export default function GoogleMap({
           return;
         }
 
+        const markerLibrary = googleMaps.marker;
+        if (markerLibrary?.AdvancedMarkerElement === undefined || markerLibrary.PinElement === undefined) {
+          throw new Error(
+            "Google Maps marker library is unavailable. Set NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID or retry loading the map."
+          );
+        }
+
         const map = new googleMaps.Map(container, {
           center: getDefaultCenter(center, markers),
           zoom: markers.length > 1 ? 12 : 14,
           disableDefaultUI: true,
+          mapId,
           styles: MAP_STYLES,
         });
 
@@ -327,7 +369,7 @@ export default function GoogleMap({
       lastSelectedMarkerIdRef.current = null;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps -- the map is initialized once; later prop changes are handled by dedicated effects
-  }, [apiKey]);
+  }, [apiKey, mapId]);
 
   useEffect(() => {
     const googleMaps = window.google?.maps;
@@ -341,12 +383,27 @@ export default function GoogleMap({
 
     const bounds = new googleMaps.LatLngBounds();
 
+    const markerLibrary = googleMaps.marker;
+    if (markerLibrary?.AdvancedMarkerElement === undefined || markerLibrary.PinElement === undefined) {
+      setLoadError("Google Maps marker library is unavailable right now.");
+      return;
+    }
+
     markers.forEach((marker) => {
-      const googleMarker = new googleMaps.Marker({
+      const pin = new markerLibrary.PinElement({
+        background: DEFAULT_MARKER_STYLE.background,
+        borderColor: DEFAULT_MARKER_STYLE.borderColor,
+        glyphColor: DEFAULT_MARKER_STYLE.glyphColor,
+        scale: DEFAULT_MARKER_STYLE.scale,
+      });
+
+      const googleMarker = new markerLibrary.AdvancedMarkerElement({
         map,
         position: { lat: marker.latitude, lng: marker.longitude },
         title: marker.title,
+        gmpClickable: true,
       });
+      googleMarker.append(pin);
 
       const clickListener = googleMarker.addListener("click", () => {
         const handleMarkerSelect = markerSelectRef.current;
@@ -359,7 +416,9 @@ export default function GoogleMap({
       });
 
       bounds.extend({ lat: marker.latitude, lng: marker.longitude });
-      markerInstancesRef.current.set(marker.id, { marker: googleMarker, clickListener });
+      const markerInstance = { marker: googleMarker, clickListener, pin };
+      applyMarkerState(markerInstance, marker.id === selectedMarkerId);
+      markerInstancesRef.current.set(marker.id, markerInstance);
     });
 
     if (markers.length > 1) {
@@ -380,14 +439,16 @@ export default function GoogleMap({
   }, [center, isMapReady, loadError, markers]);
 
   useEffect(() => {
-    const googleMaps = window.google?.maps;
-    if (!isMapReady || googleMaps === undefined) {
+    if (!isMapReady) {
       return;
     }
 
     const previousMarkerId = lastSelectedMarkerIdRef.current;
     if (previousMarkerId !== null) {
-      markerInstancesRef.current.get(previousMarkerId)?.marker.setAnimation(null);
+      const previousMarker = markerInstancesRef.current.get(previousMarkerId);
+      if (previousMarker !== undefined) {
+        applyMarkerState(previousMarker, false);
+      }
     }
 
     if (selectedMarkerId === undefined) {
@@ -401,7 +462,7 @@ export default function GoogleMap({
       return;
     }
 
-    selectedMarker.marker.setAnimation(googleMaps.Animation.DROP);
+    applyMarkerState(selectedMarker, true);
     lastSelectedMarkerIdRef.current = selectedMarkerId;
   }, [isMapReady, markers, selectedMarkerId]);
 
