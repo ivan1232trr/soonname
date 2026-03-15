@@ -44,6 +44,8 @@ declare module "fastify" {
   interface FastifyInstance {
     // Prehandler function that verifies the JWT and checks Redis before allowing route access
     authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    // Best-effort auth for public routes that can optionally personalize a response
+    tryAuthenticate: (request: FastifyRequest) => Promise<boolean>;
   }
 }
 
@@ -78,29 +80,42 @@ async function authPlugin(fastify: FastifyInstance): Promise<void> {
    * @returns       - A Promise; resolves silently on success, sends 401 on failure
    * @sideEffects   - Reads from Redis to check session existence
    */
-  const authenticate = async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
-    // Verify the JWT signature and expiry; throws if invalid, populates request.user on success
-    try {
-      await request.jwtVerify();
-    } catch {
-      // Send 401 with a generic message; do not reveal whether the token is missing vs expired
-      return reply.status(401).send({ error: "Unauthorized" });
-    }
+  const verifyAuthenticatedSession = async (request: FastifyRequest): Promise<void> => {
+    await request.jwtVerify();
 
-    // Check that the session still exists in Redis; it may have been deleted by logout
     const key = sessionKey(request.user.jti);
-    // GET returns null if the key does not exist (expired or revoked)
     const sessionUserId = await fastify.redis.get(key);
 
-    // If the Redis key is gone, the session was revoked — reject the request
-    if (sessionUserId === null) {
-      // Return 401 so the client knows it must re-authenticate
-      return reply.status(401).send({ error: "Session expired or revoked" });
+    if (sessionUserId === null || sessionUserId !== request.user.userId) {
+      throw new Error("Session expired or revoked");
+    }
+  };
+
+  const authenticate = async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
+    try {
+      await verifyAuthenticatedSession(request);
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message === "Session expired or revoked"
+          ? "Session expired or revoked"
+          : "Unauthorized";
+
+      return reply.status(401).send({ error: message });
+    }
+  };
+
+  const tryAuthenticate = async (request: FastifyRequest): Promise<boolean> => {
+    try {
+      await verifyAuthenticatedSession(request);
+      return true;
+    } catch {
+      return false;
     }
   };
 
   // Decorate the Fastify instance so routes can reference fastify.authenticate in preHandler arrays
   fastify.decorate("authenticate", authenticate);
+  fastify.decorate("tryAuthenticate", tryAuthenticate);
 }
 
 // Export wrapped with fp so the decoration is not encapsulated and is visible to all route plugins

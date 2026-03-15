@@ -186,14 +186,8 @@ Respond with only the JSON object. No explanation, no markdown, no code blocks.`
       }
 
       try {
-        // Try to extract userId from JWT if present (optional auth)
-        let userId: string | undefined;
-        try {
-          await fastify.authenticate(request, reply);
-          userId = request.user?.userId;
-        } catch {
-          // No auth — that's fine, public access
-        }
+        const isAuthenticated = await fastify.tryAuthenticate(request);
+        const userId = isAuthenticated ? request.user?.userId : undefined;
 
         const event = await fastify.prisma.event.findFirst({
           where: {
