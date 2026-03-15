@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { EventStatus } from "@citypulse/types";
-import BottomNav from "@/components/BottomNav";
 import { IconChevronLeft, IconSparkles } from "@/components/icons";
 import { ApiError, getMyEvents } from "@/lib/api";
 import type { ApiEvent } from "@/lib/api-types";
@@ -76,7 +75,7 @@ export default function MyEventsPage() {
   const token = typeof window !== "undefined" ? getStoredToken() : null;
 
   return (
-    <div className="shell">
+    <>
       <div className={styles.navHeader}>
         <Link href="/post" className={styles.backBtn}>
           <IconChevronLeft size={20} color="var(--cp-text-secondary)" />
@@ -165,7 +164,6 @@ export default function MyEventsPage() {
         </div>
       )}
 
-      <BottomNav />
-    </div>
+    </>
   );
 }

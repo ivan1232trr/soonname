@@ -261,3 +261,19 @@ model UserInteraction {
   // Index on eventId so interaction counts per event are fast to aggregate
   @@index([eventId])
 }
+
+// System-wide announcements displayed in the announcements feed
+model Announcement {
+  // UUID primary key
+  id        String   @id @default(uuid())
+  // Short headline for the announcement
+  title     String
+  // Full message content (Markdown supported on frontend)
+  content   String
+  // Importance level (0 = Info, 1 = Warning, 2 = Urgent)
+  priority  Int      @default(0)
+  // When the announcement was published
+  createdAt DateTime @default(now())
+  // Whether the announcement is visible to users
+  active    Boolean  @default(true)
+}

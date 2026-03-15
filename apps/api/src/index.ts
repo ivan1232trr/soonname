@@ -32,6 +32,8 @@ import { interactionRoutes } from "./routes/interactions.js";
 import { healthRoutes } from "./routes/health.js";
 // Events routes: GET /events and POST /events
 import { eventRoutes } from "./routes/events.js";
+// Announcement routes: GET /announcements
+import { announcementRoutes } from "./routes/announcements.js";
 // Validated config: port, host, and environment flags
 import { config } from "./config.js";
 // Classifier worker bootstraps the queue consumer inside the API process
@@ -94,6 +96,7 @@ async function buildServer() {
   await fastify.register(tagRoutes, { prefix: "/api/v1" });
   await fastify.register(eventRoutes, { prefix: "/api/v1" });
   await fastify.register(interactionRoutes, { prefix: "/api/v1" });
+  await fastify.register(announcementRoutes, { prefix: "/api/v1" });
 
   // Return the fully configured server so the caller can invoke listen()
   return fastify;

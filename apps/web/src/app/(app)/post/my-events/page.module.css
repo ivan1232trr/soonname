@@ -31,10 +31,11 @@
 .content {
   flex: 1;
   overflow-y: auto;
-  padding: 12px 24px 100px;
+  padding: 12px 24px calc(24px + var(--cp-bottom-nav-offset));
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-height: 0;
 }
 
 .emptyState {

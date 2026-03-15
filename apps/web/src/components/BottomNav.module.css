@@ -1,7 +1,19 @@
 .nav {
-  padding: 0 16px 16px;
-  background: var(--cp-bg);
-  flex-shrink: 0;
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  z-index: 100; /* Increased to stay above all content */
+  width: min(402px, 100vw);
+  padding: 12px 16px calc(24px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  /* Allow clicks to pass through the container to the cards below */
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(10, 10, 10, 0) 0%,
+    rgba(10, 10, 10, 0.4) 40%,
+    rgba(10, 10, 10, 0.8) 100%
+  );
 }
 
 .pill {
@@ -11,7 +23,11 @@
   border: 1px solid var(--cp-border);
   border-radius: 36px;
   padding: 4px;
-  height: 62px;
+  height: 64px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(20px);
+  /* Restore interaction for the actual navbar controls */
+  pointer-events: auto;
 }
 
 .tab {

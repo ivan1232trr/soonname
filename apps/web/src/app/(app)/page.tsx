@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { EventCategory } from "@citypulse/types";
-import BottomNav from "@/components/BottomNav";
 import EventCard from "@/components/EventCard";
 import { IconNavigation, IconSearch } from "@/components/icons";
 import { ApiError, getCities, getEvents } from "@/lib/api";
@@ -93,7 +92,7 @@ export default function FeedPage() {
   );
 
   return (
-    <div className="shell">
+    <>
       <div className={styles.topBar}>
         <div>
           <p className={styles.eyebrow}>Live feed</p>
@@ -170,8 +169,6 @@ export default function FeedPage() {
           <EventCard key={event.id} event={eventToCardData(event)} />
         ))}
       </div>
-
-      <BottomNav />
-    </div>
+    </>
   );
 }

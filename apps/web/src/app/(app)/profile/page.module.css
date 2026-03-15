@@ -28,9 +28,10 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 0 24px 24px;
+  padding: 0 24px calc(24px + var(--cp-bottom-nav-offset));
   overflow-y: auto;
   flex: 1;
+  min-height: 0;
 }
 
 .card {
@@ -132,4 +133,70 @@
   font-size: 13px;
   color: var(--cp-text-tertiary);
   padding-top: 4px;
+}
+
+/* Mock Sign-In Styles */
+.lockIcon {
+  margin-bottom: 24px;
+  opacity: 0.5;
+}
+
+.emptyTitle {
+  font-family: var(--font-manrope);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--cp-text-primary);
+  margin-bottom: 8px;
+}
+
+.mockButton {
+  margin-top: 24px;
+  padding: 12px 24px;
+  background: var(--cp-primary);
+  color: white;
+  border: none;
+  border-radius: 999px;
+  font-family: var(--font-manrope);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.errorText {
+  margin-top: 16px;
+  font-size: 13px;
+  color: #ef4444;
+}
+
+.headerInfo {
+  display: flex;
+  flex-direction: column;
+}
+
+.userEmail {
+  font-family: var(--font-manrope);
+  font-size: 13px;
+  color: var(--cp-text-tertiary);
+}
+
+.avatarInitial {
+  font-family: var(--font-manrope);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--cp-text-primary);
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.emptyText {
+  font-family: var(--font-manrope);
+  font-size: 15px;
+  color: var(--cp-text-secondary);
 }

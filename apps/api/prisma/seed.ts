@@ -753,6 +753,33 @@ async function main(): Promise<void> {
 
   console.log(`  Created ${interactionCount} interactions`);
 
+  // ── Seed announcements ──────────────────────────────────────────────────
+  console.log("\nAnnouncements:");
+  const ANNOUNCEMENTS = [
+    {
+      title: "Welcome to CityPulse Kingston!",
+      content: "We've just launched our newest city dashboard for Kingston. Explore the latest events, nightlife, and culture across the city.",
+      priority: 1,
+    },
+    {
+      title: "Scheduled Maintenance",
+      content: "The CityPulse API will be undergoing brief maintenance tomorrow at 3:00 AM UTC. Expect minor service interruptions.",
+      priority: 2,
+    },
+    {
+      title: "New AI Ranking Feature",
+      content: "Our AI classification engine now supports personalized vibe-based ranking. Update your profile to get better recommendations!",
+      priority: 0,
+    },
+  ];
+
+  for (const ann of ANNOUNCEMENTS) {
+    const upserted = await prisma.announcement.create({
+      data: ann,
+    });
+    console.log(`  ${upserted.title} (${upserted.id})`);
+  }
+
   console.log("\nSeeding complete.");
   console.log(`  ${cityRecords.length} cities`);
   console.log(`  ${tagRecords.size} tags`);

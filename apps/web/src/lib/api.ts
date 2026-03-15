@@ -15,7 +15,11 @@ import type {
   ApiTag,
   ApiUser,
   ApiUserProfile,
+  ApiAnnouncement,
 } from "./api-types";
+
+export const getAnnouncements = (): Promise<ApiAnnouncement[]> =>
+  apiFetch<ApiAnnouncement[]>("announcements");
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:3001/api/v1";

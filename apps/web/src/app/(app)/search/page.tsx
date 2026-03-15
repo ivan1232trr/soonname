@@ -58,7 +58,7 @@ export default function SearchPage() {
   }, [deferredQuery, selectedCityId]);
 
   return (
-    <div className="shell">
+    <>
       <div className={styles.header}>
         <div className={styles.searchBar}>
           <IconSearch size={18} color="var(--cp-text-muted)" />
@@ -78,6 +78,7 @@ export default function SearchPage() {
 
         <select
           className={styles.citySelect}
+          aria-label="Select city"
           value={selectedCityId}
           onChange={(event) => setSelectedCityId(event.target.value)}
         >
@@ -95,7 +96,7 @@ export default function SearchPage() {
           : `${results.length} result${results.length === 1 ? "" : "s"}${deferredQuery === "" ? " in this city" : ` for "${deferredQuery}"`}`}
       </p>
 
-      <div className={styles.results}>
+      <main className={styles.results}>
         {error !== null ? <p className={styles.emptyState}>{error}</p> : null}
         {error === null && !loading && results.length === 0 ? (
           <p className={styles.emptyState}>No events matched your search in the selected city.</p>
@@ -120,7 +121,7 @@ export default function SearchPage() {
             </div>
           </Link>
         ))}
-      </div>
-    </div>
+      </main>
+    </>
   );
 }

@@ -125,7 +125,7 @@ export default function EventDetailPage() {
   };
 
   return (
-    <div className="shell">
+    <>
       <div className={styles.navHeader}>
         <Link href="/" className={styles.backBtn}>
           <IconChevronLeft size={24} color="var(--cp-text-primary)" />
@@ -248,6 +248,6 @@ export default function EventDetailPage() {
           <IconShare size={20} color="var(--cp-text-primary)" />
         </button>
       </div>
-    </div>
+    </>
   );
 }

@@ -75,3 +75,12 @@ export interface ApiInteraction {
   type: UserInteractionType;
   createdAt: string;
 }
+
+export interface ApiAnnouncement {
+  id: string;
+  title: string;
+  content: string;
+  priority: number;
+  createdAt: string;
+  active: boolean;
+}

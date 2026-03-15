@@ -88,3 +88,6 @@ export const IconPencil = ({ size = 16, color = "currentColor", strokeWidth = 2 
 
 export const IconRefreshCw = ({ size = 16, color = "currentColor", strokeWidth = 2 }: IconProps) =>
   base(<><polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></>, size, color, strokeWidth);
+
+export const IconLock = ({ size = 18, color = "currentColor", strokeWidth = 2 }: IconProps) =>
+  base(<><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></>, size, color, strokeWidth);

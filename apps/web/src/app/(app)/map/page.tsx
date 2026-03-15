@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { EventCategory } from "@citypulse/types";
-import BottomNav from "@/components/BottomNav";
 import GoogleMap, { type ViewportBounds } from "@/components/GoogleMap";
 import { IconSearch } from "@/components/icons";
 import { ApiError, getCities, getEvents } from "@/lib/api";
@@ -35,6 +34,7 @@ export default function MapPage() {
   const [viewport, setViewport] = useState<ViewportBounds | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const viewportCallbackRef = useRef<((bounds: ViewportBounds) => void) | null>(null);
+  const lastViewportRef = useRef<ViewportBounds | null>(null);
 
   useEffect(() => {
     const loadCities = async () => {
@@ -91,6 +91,18 @@ export default function MapPage() {
 
   // Debounced viewport change handler — stored in a ref so GoogleMap doesn't re-render
   const handleViewportChange = useCallback((bounds: ViewportBounds) => {
+    const last = lastViewportRef.current;
+    if (
+      last !== null &&
+      Math.abs(last.north - bounds.north) < 0.00001 &&
+      Math.abs(last.south - bounds.south) < 0.00001 &&
+      Math.abs(last.east - bounds.east) < 0.00001 &&
+      Math.abs(last.west - bounds.west) < 0.00001 &&
+      last.zoom === bounds.zoom
+    ) {
+      return;
+    }
+    lastViewportRef.current = bounds;
     if (debounceRef.current !== null) {
       clearTimeout(debounceRef.current);
     }
@@ -104,6 +116,17 @@ export default function MapPage() {
     viewportCallbackRef.current = handleViewportChange;
   }, [handleViewportChange]);
 
+  const markers = useMemo(
+    () =>
+      events.map((event) => ({
+        id: event.id,
+        title: event.title,
+        latitude: event.latitude,
+        longitude: event.longitude,
+      })),
+    [events]
+  );
+
   const selectedCity = useMemo(
     () => cities.find((city) => city.id === selectedCityId) ?? null,
     [cities, selectedCityId]
@@ -114,7 +137,7 @@ export default function MapPage() {
   );
 
   return (
-    <div className="shell">
+    <>
       <div className={styles.topBar}>
         <div>
           <p className={styles.eyebrow}>Spatial discovery</p>
@@ -156,12 +179,7 @@ export default function MapPage() {
 
       <div className={styles.mapArea}>
         <GoogleMap
-          markers={events.map((event) => ({
-            id: event.id,
-            title: event.title,
-            latitude: event.latitude,
-            longitude: event.longitude,
-          }))}
+          markers={markers}
           center={
             selectedCity === null
               ? undefined
@@ -230,7 +248,6 @@ export default function MapPage() {
         </div>
       </div>
 
-      <BottomNav />
-    </div>
+    </>
   );
 }

@@ -16,6 +16,7 @@
   --cat-wellness: #15803d;
   --cat-culture: #ec4899;
   --cat-sports: #fa541c;
+  --cp-bottom-nav-offset: 108px;
   --font-inter: 'Inter', system-ui, sans-serif;
   --font-space-grotesk: 'Space Grotesk', system-ui, sans-serif;
   --font-manrope: 'Manrope', system-ui, sans-serif;
@@ -30,6 +31,21 @@
   padding: 0;
 }
 
+.stickyFooter {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 24px calc(16px + var(--cp-bottom-nav-offset));
+  background: rgba(24, 24, 27, 0.85); /* Semi-transparent */
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--cp-border);
+  z-index: 50; /* Stay above content but below BottomNav */
+}
+
 html,
 body {
   height: 100%;
@@ -41,6 +57,7 @@ body {
   font-family: var(--font-inter);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
 a {
@@ -63,12 +80,22 @@ select {
 }
 
 .shell {
+  width: 100%;
   max-width: 402px;
   margin: 0 auto;
-  min-height: 100svh;
+  height: 100svh;
   background: var(--cp-bg);
   position: relative;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.scrollContent {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 24px 24px calc(24px + var(--cp-bottom-nav-offset) + 80px); /* Extra padding for double footers */
+  overflow-y: auto;
+  flex: 1;
 }
