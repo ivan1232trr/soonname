@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "description": "Event GO monorepo root — tooling and workspace coordination only",
   "private": true,
+  "packageManager": "pnpm@10.32.1",
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"

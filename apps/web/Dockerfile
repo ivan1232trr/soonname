@@ -1,7 +1,11 @@
+# syntax=docker/dockerfile:1.7
+
 FROM node:22-alpine AS base
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+ENV CI=true
 
 RUN corepack enable
 
@@ -13,7 +17,8 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY apps/web/package.json apps/web/package.json
 COPY packages/types/package.json packages/types/package.json
 
-RUN pnpm install --frozen-lockfile --ignore-scripts
+RUN --mount=type=cache,id=pnpm-web-store,target=/pnpm/store \
+    pnpm install --frozen-lockfile --ignore-scripts --store-dir /pnpm/store
 
 FROM deps AS build
 
